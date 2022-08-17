@@ -161,6 +161,24 @@ impl VariantInfo {
             }
         }
     }
+
+    pub fn build_unwrap_or_else(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type;
+        let pattern = &self.pattern;
+        let construction = &self.construction;
+
+        let fn_ident = format_ident!("unwrap_{snake_case}_or_else");
+
+        quote! {
+            fn #fn_ident(self, f: impl FnOnce(Self) -> #data_type) -> #data_type {
+                match self {
+                    #pattern => #construction,
+                    some => f(some),
+                }
+            }
+        }
+    }
 }
 
 pub trait ExtractVariantInfo {
