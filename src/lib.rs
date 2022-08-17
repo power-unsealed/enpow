@@ -34,13 +34,14 @@ fn unwrap_as(input: DeriveInput) -> TokenStream {
     }
 
     let enum_ident = &parent.identifier;
+    let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
     quote! {
         #(#[allow(unused)] #type_defs)*
 
         #[automatically_derived]
         #[allow(unused)]
-        impl #enum_ident {
+        impl #gen_full #enum_ident #gen_short #gen_where {
             #(#functions)*
         }
     }
@@ -66,7 +67,7 @@ mod tests {
     #[test]
     fn unwrap_as() {
         let source =
-            "#[derive(UnwrapAs)] pub enum Test { A, B(u32), C(i32, i64), D { a: u32, b: char }, }";
+            "#[derive(UnwrapAs)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
         let tokens = TokenStream::from_str(source).unwrap();
         let input: DeriveInput = syn::parse2(tokens).unwrap();
         let result = super::unwrap_as(input);

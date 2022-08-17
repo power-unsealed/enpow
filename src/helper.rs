@@ -144,9 +144,11 @@ impl ExtractVariantInfo for Variant {
 
             // Variant with named fields
             Fields::Named(fields) => {
-                let enum_attrs = &parent.attributes;
-                let enum_vis = &parent.visibility;
+                let visibility = &parent.visibility;
+                let generics = &parent.generics;
+                let (_, gen_short, gen_where) = parent.generics.split_for_impl();
                 let type_ident = format_ident!("{enum_ident}{identifier}");
+                let data_type = quote! { #type_ident #gen_short };
 
                 let (field_idents, field_types): (Vec<_>, Vec<_>) = fields
                     .named
@@ -161,9 +163,9 @@ impl ExtractVariantInfo for Variant {
                     .collect();
 
                 VariantInfo::new(
-                    quote! { #type_ident },
+                    data_type,
                     Some(quote! {
-                        #enum_vis struct #type_ident { #(#fields),* }
+                        #visibility struct #type_ident #generics #gen_where { #(#fields),* }
                     }),
                     quote! { #enum_ident::#identifier { #(#field_idents),* } },
                     quote! { #type_ident { #(#field_idents),* } },
