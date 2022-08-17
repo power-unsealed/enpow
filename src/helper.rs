@@ -109,6 +109,24 @@ impl VariantInfo {
             }
         }
     }
+
+    pub fn build_expect(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type;
+        let pattern = &self.pattern;
+        let construction = &self.construction;
+
+        let fn_ident = format_ident!("expect_{snake_case}");
+
+        quote! {
+            fn #fn_ident(self, msg: &str) -> #data_type {
+                match self {
+                    #pattern => #construction,
+                    _ => panic!("{msg}"),
+                }
+            }
+        }
+    }
 }
 
 pub trait ExtractVariantInfo {
