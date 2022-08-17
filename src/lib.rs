@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Data, spanned::Spanned, Error};
 
+mod helper;
+
 #[proc_macro_derive(UnwrapAs)]
 pub fn unwrap_as_entry(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
