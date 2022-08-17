@@ -70,6 +70,24 @@ impl VariantInfo {
         }
     }
 
+    pub fn build_base(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type;
+        let pattern = &self.pattern;
+        let construction = &self.construction;
+
+        let fn_ident = Ident::new(&snake_case, Span::call_site());
+
+        quote! {
+            fn #fn_ident(self) -> Option< #data_type > {
+                match self {
+                    #pattern => Some(#construction),
+                    _ => None,
+                }
+            }
+        }
+    }
+
     pub fn build_unwrap(&self, parent: &EnumInfo) -> TokenStream {
         let snake_case = &self.snake_case;
         let data_type = &self.data_type;

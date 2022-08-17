@@ -28,6 +28,7 @@ fn unwrap_as(input: DeriveInput) -> TokenStream {
     let mut type_defs = Vec::new();
 
     for variant in variants {
+        functions.push(variant.build_base());
         functions.push(variant.build_unwrap(&parent));
 
         type_defs.extend(variant.type_def.clone());
