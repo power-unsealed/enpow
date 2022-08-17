@@ -39,7 +39,7 @@ mod tests {
         let tokens = TokenStream::from_str(source).unwrap();
         let input: DeriveInput = syn::parse2(tokens).unwrap();
         let result = unwrap_as(input);
-        let macr: Macro = syn::parse2(result).unwrap();
-        assert_eq!(macr.path.get_ident().unwrap(), "compile_error");
+        let mcr: Macro = syn::parse2(result).unwrap();
+        assert_eq!(mcr.path.get_ident().unwrap(), "compile_error");
     }
 }
