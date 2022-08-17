@@ -29,6 +29,7 @@ fn unwrap_as(input: DeriveInput) -> TokenStream {
 
     for variant in variants {
         functions.push(variant.build_base());
+        functions.push(variant.build_is());
         functions.push(variant.build_unwrap(&parent));
         functions.push(variant.build_expect());
 
