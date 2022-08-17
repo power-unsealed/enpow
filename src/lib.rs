@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Macro, DeriveInput, parse::Parse, Data, spanned::Spanned, Error};
+use syn::{parse_macro_input, DeriveInput, Data, spanned::Spanned, Error};
 
 #[proc_macro_derive(UnwrapAs)]
 pub fn unwrap_as_entry(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -31,6 +31,7 @@ fn unwrap_as(input: DeriveInput) -> TokenStream {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use syn::Macro;
     use std::str::FromStr;
 
     #[test]
