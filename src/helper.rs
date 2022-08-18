@@ -5,6 +5,15 @@ use syn::{
     FieldsUnnamed, GenericParam, Generics, Ident, Lifetime, LifetimeDef, Variant, Visibility,
 };
 
+#[derive(Clone, Copy)]
+pub enum MethodType {
+    Variant,
+    IsVariant,
+    VariantAsRef,
+    UnwrapVariant,
+    ExpectVariant,
+}
+
 pub struct EnumInfo {
     pub span: Span,
     pub attributes: Vec<Attribute>,
@@ -217,7 +226,35 @@ impl VariantInfo {
         ))
     }
 
-    pub fn build_base(&self) -> TokenStream {
+    pub fn build_type(&self, parent: &EnumInfo, types: &[MethodType]) -> Vec<TokenStream> {
+        let mut methods = Vec::new();
+        for t in types {
+            match t {
+                MethodType::Variant => {
+                    methods.push(self.build_variant());
+                }
+                MethodType::IsVariant => {
+                    methods.push(self.build_is());
+                    methods.push(self.build_is_and());
+                }
+                MethodType::VariantAsRef => {
+                    methods.push(self.build_as_ref());
+                    methods.push(self.build_as_mut());
+                }
+                MethodType::UnwrapVariant => {
+                    methods.push(self.build_unwrap(parent));
+                    methods.push(self.build_unwrap_or());
+                    methods.push(self.build_unwrap_or_else());
+                }
+                MethodType::ExpectVariant => {
+                    methods.push(self.build_expect());
+                }
+            }
+        }
+        methods
+    }
+
+    pub fn build_variant(&self) -> TokenStream {
         let snake_case = &self.snake_case;
         let data_type = &self.data_type.0;
         let pattern = &self.pattern;

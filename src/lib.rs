@@ -1,4 +1,4 @@
-use helper::{ExtractEnumInfo, ExtractVariantInfo};
+use helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse_macro_input, DeriveInput, Error};
@@ -32,15 +32,13 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
     let mut mut_defs = Vec::new();
 
     for variant in variants {
-        functions.push(variant.build_base());
-        functions.push(variant.build_as_ref());
-        functions.push(variant.build_as_mut());
-        functions.push(variant.build_is());
-        functions.push(variant.build_is_and());
-        functions.push(variant.build_unwrap(&parent));
-        functions.push(variant.build_unwrap_or());
-        functions.push(variant.build_unwrap_or_else());
-        functions.push(variant.build_expect());
+        functions.extend(variant.build_type(&parent, &[
+            MethodType::Variant,
+            MethodType::IsVariant,
+            MethodType::VariantAsRef,
+            MethodType::UnwrapVariant,
+            MethodType::ExpectVariant,
+        ]));
 
         // Save type definitions if there are any
         self_defs.extend(variant.type_def.0.clone());
