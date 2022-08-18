@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
     spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Fields, Generics, Ident,
-    Variant, Visibility, Lifetime, GenericParam, LifetimeDef,
+    Variant, Visibility, Lifetime, GenericParam, LifetimeDef, FieldsUnnamed, Field, FieldsNamed,
 };
 
 pub struct EnumInfo {
@@ -70,6 +70,134 @@ impl VariantInfo {
             pattern,
             construction,
         }
+    }
+
+    pub fn from_unit(identifier: Ident, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+        let enum_ident = &parent.identifier;
+        
+        Ok(VariantInfo::new(
+            (quote! { () }, quote! { () }, quote! { () }),
+            Vec::new(),
+            quote! { #enum_ident::#identifier },
+            (quote! { () }, quote! { () }, quote! { () }),
+            identifier,
+        ))
+    }
+
+    pub fn from_field(identifier: Ident, field: Field, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+        let enum_ident = &parent.identifier;
+
+        let single = &field.ty;
+        Ok(VariantInfo::new(
+            (quote! { #single }, quote! { & #single }, quote! { &mut #single },),
+            Vec::new(),
+            quote! { #enum_ident::#identifier( f0 ) },
+            (quote! { f0 }, quote! { f0 }, quote! { f0 }),
+            identifier,
+        ))
+    }
+
+    pub fn from_unnamed(identifier: Ident, tuple: FieldsUnnamed, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+        let enum_ident = &parent.identifier;
+        let fields: Vec<_> = tuple
+            .unnamed
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format_ident!("f{i}"))
+            .collect();
+        let construction = quote! { ( #(#fields),* ) };
+
+        let mut ref_tuple = tuple.clone();
+        for field in ref_tuple.unnamed.iter_mut() {
+            let ftype = &field.ty;
+            field.ty = syn::parse2(quote! { & #ftype })?;
+        }
+
+        let mut mut_tuple = tuple.clone();
+        for field in mut_tuple.unnamed.iter_mut() {
+            let ftype = &field.ty;
+            field.ty = syn::parse2(quote! { &mut #ftype })?;
+        }
+
+        Ok(VariantInfo::new(
+            (quote! { #tuple }, quote! { #ref_tuple }, quote! { #mut_tuple }),
+            Vec::new(),
+            quote! { #enum_ident::#identifier #construction },
+            (construction.clone(), construction.clone(), construction),
+            identifier,
+        ))
+    }
+
+    pub fn from_named(identifier: Ident, fields: FieldsNamed, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+        let enum_ident = &parent.identifier;
+        let visibility = &parent.visibility;
+        let (field_idents, field_types): (Vec<_>, Vec<_>) = fields
+            .named
+            .into_iter()
+            .map(|field| (field.ident.unwrap(), field.ty))
+            .unzip();
+        let constructor = quote! { { #(#field_idents),* } };
+        let (_, gen_short, gen_where) = parent.generics.split_for_impl();
+
+        // Value struct
+        let type_ident = format_ident!("{enum_ident}{identifier}");
+        let generics = &parent.generics;
+        let data_type = quote! { #type_ident #gen_short };
+        let fields: Vec<_> = field_idents
+            .iter()
+            .zip(field_types.iter())
+            .map(|(i, t)| quote! { pub #i: #t })
+            .collect();
+        let type_def = quote! {
+            #visibility struct #type_ident #generics #gen_where { #(#fields),* }
+        };
+        let data_constr = quote! { #type_ident #constructor };
+
+        // Build generics for ref and mut
+        let lifetime_name = format!("'{}", type_ident.to_string().to_snake_case());
+        let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
+        let mut gen_params = generics.params.clone();
+        gen_params.push(GenericParam::Lifetime(LifetimeDef::new(lifetime.clone())));
+        let mut ref_generics = generics.clone();
+        ref_generics.params = gen_params;
+
+        // Ref struct
+        let ref_ident = format_ident!("{type_ident}Ref");
+        let ref_type = quote! { #ref_ident #gen_short };
+        let fields_ref: Vec<_> = field_idents
+            .iter()
+            .zip(field_types.iter())
+            .map(|(i, t)| quote! { pub #i: &#lifetime #t })
+            .collect();
+        let ref_def = quote! {
+            #visibility struct #ref_ident #ref_generics #gen_where { #(#fields_ref),* }
+        };
+        let ref_constr = quote! { #ref_ident #constructor };
+
+        // Mut struct
+        let mut_ident = format_ident!("{type_ident}RefMut");
+        let mut_type = quote! { #mut_ident #gen_short };
+        let fields_mut: Vec<_> = field_idents
+            .iter()
+            .zip(field_types.iter())
+            .map(|(i, t)| quote! { pub #i: &#lifetime mut #t })
+            .collect();
+        let mut_def = quote! {
+            #visibility struct #mut_ident #ref_generics #gen_where { #(#fields_mut),* }
+        };
+        let mut_constr = quote! { #mut_ident #constructor };
+
+        Ok(VariantInfo::new(
+            (data_type, ref_type, mut_type),
+            vec![
+                type_def,
+                ref_def,
+                mut_def,
+            ],
+            quote! { #enum_ident::#identifier #constructor },
+            (data_constr, ref_constr, mut_constr),
+            identifier,
+        ))
     }
 
     pub fn build_base(&self) -> TokenStream {
@@ -207,133 +335,24 @@ pub trait ExtractVariantInfo {
 
 impl ExtractVariantInfo for Variant {
     fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error> {
-        let enum_ident = &parent.identifier;
         let identifier = self.ident;
 
         match self.fields {
             // Variant without data
-            Fields::Unit => Ok(VariantInfo::new(
-                (quote! { () }, quote! { () }, quote! { () }),
-                Vec::new(),
-                quote! { #enum_ident::#identifier },
-                (quote! { () }, quote! { () }, quote! { () }),
-                identifier,
-            )),
+            Fields::Unit => VariantInfo::from_unit(identifier, parent),
 
-            // Variant with exactly one unnamed field
-            Fields::Unnamed(tuple) if tuple.unnamed.len() == 1 => {
-                let single = &tuple.unnamed[0].ty;
-                Ok(VariantInfo::new(
-                    (quote! { #single }, quote! { & #single }, quote! { &mut #single },),
-                    Vec::new(),
-                    quote! { #enum_ident::#identifier( f0 ) },
-                    (quote! { f0 }, quote! { f0 }, quote! { f0 }),
-                    identifier,
-                ))
-            }
-
-            // Variant with more than one unnamed field
+            // Variant with unnamed fields
             Fields::Unnamed(tuple) => {
-                let fields: Vec<_> = tuple
-                    .unnamed
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format_ident!("f{i}"))
-                    .collect();
-                let construction = quote! { ( #(#fields),* ) };
-
-                let mut ref_tuple = tuple.clone();
-                for field in ref_tuple.unnamed.iter_mut() {
-                    let ftype = &field.ty;
-                    field.ty = syn::parse2(quote! { & #ftype })?;
+                if tuple.unnamed.len() == 1 {
+                    let field = tuple.unnamed[0].clone();
+                    VariantInfo::from_field(identifier, field, parent)
+                } else {
+                    VariantInfo::from_unnamed(identifier, tuple, parent)
                 }
-
-                let mut mut_tuple = tuple.clone();
-                for field in mut_tuple.unnamed.iter_mut() {
-                    let ftype = &field.ty;
-                    field.ty = syn::parse2(quote! { &mut #ftype })?;
-                }
-
-                Ok(VariantInfo::new(
-                    (quote! { #tuple }, quote! { #ref_tuple }, quote! { #mut_tuple }),
-                    Vec::new(),
-                    quote! { #enum_ident::#identifier #construction },
-                    (construction.clone(), construction.clone(), construction),
-                    identifier,
-                ))
             }
 
             // Variant with named fields
-            Fields::Named(fields) => {
-                let visibility = &parent.visibility;
-                let (field_idents, field_types): (Vec<_>, Vec<_>) = fields
-                    .named
-                    .into_iter()
-                    .map(|field| (field.ident.unwrap(), field.ty))
-                    .unzip();
-                let constructor = quote! { { #(#field_idents),* } };
-                let (_, gen_short, gen_where) = parent.generics.split_for_impl();
-
-                // Value struct
-                let type_ident = format_ident!("{enum_ident}{identifier}");
-                let generics = &parent.generics;
-                let data_type = quote! { #type_ident #gen_short };
-                let fields: Vec<_> = field_idents
-                    .iter()
-                    .zip(field_types.iter())
-                    .map(|(i, t)| quote! { pub #i: #t })
-                    .collect();
-                let type_def = quote! {
-                    #visibility struct #type_ident #generics #gen_where { #(#fields),* }
-                };
-                let data_constr = quote! { #type_ident #constructor };
-
-                // Build generics for ref and mut
-                let lifetime_name = format!("'{}", type_ident.to_string().to_snake_case());
-                let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
-                let mut gen_params = generics.params.clone();
-                gen_params.push(GenericParam::Lifetime(LifetimeDef::new(lifetime.clone())));
-                let mut ref_generics = generics.clone();
-                ref_generics.params = gen_params;
-
-                // Ref struct
-                let ref_ident = format_ident!("{type_ident}Ref");
-                let ref_type = quote! { #ref_ident #gen_short };
-                let fields_ref: Vec<_> = field_idents
-                    .iter()
-                    .zip(field_types.iter())
-                    .map(|(i, t)| quote! { pub #i: &#lifetime #t })
-                    .collect();
-                let ref_def = quote! {
-                    #visibility struct #ref_ident #ref_generics #gen_where { #(#fields_ref),* }
-                };
-                let ref_constr = quote! { #ref_ident #constructor };
-
-                // Mut struct
-                let mut_ident = format_ident!("{type_ident}RefMut");
-                let mut_type = quote! { #mut_ident #gen_short };
-                let fields_mut: Vec<_> = field_idents
-                    .iter()
-                    .zip(field_types.iter())
-                    .map(|(i, t)| quote! { pub #i: &#lifetime mut #t })
-                    .collect();
-                let mut_def = quote! {
-                    #visibility struct #mut_ident #ref_generics #gen_where { #(#fields_mut),* }
-                };
-                let mut_constr = quote! { #mut_ident #constructor };
-
-                Ok(VariantInfo::new(
-                    (data_type, ref_type, mut_type),
-                    vec![
-                        type_def,
-                        ref_def,
-                        mut_def,
-                    ],
-                    quote! { #enum_ident::#identifier #constructor },
-                    (data_constr, ref_constr, mut_constr),
-                    identifier,
-                ))
-            }
+            Fields::Named(fields) => VariantInfo::from_named(identifier, fields, parent),
         }
     }
 }
