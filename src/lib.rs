@@ -1,7 +1,7 @@
 use helper::{ExtractEnumInfo, ExtractVariantInfo};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse_macro_input, Error, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, Error};
 
 mod helper;
 
@@ -11,7 +11,8 @@ pub fn unwrap_as_entry(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
     match unwrap_as(input) {
         Ok(stream) => stream,
         Err(error) => error.into_compile_error(),
-    }.into()
+    }
+    .into()
 }
 
 fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
@@ -23,7 +24,7 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
         .iter()
         .cloned()
         .map(|var| var.extract_info(&parent))
-        .collect::<Result<_,_>>()?;
+        .collect::<Result<_, _>>()?;
 
     let mut functions = Vec::new();
     let mut type_defs = Vec::new();

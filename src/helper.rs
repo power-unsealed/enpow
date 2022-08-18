@@ -1,8 +1,8 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
-    spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Fields, Generics, Ident,
-    Variant, Visibility, Lifetime, GenericParam, LifetimeDef, FieldsUnnamed, Field, FieldsNamed,
+    spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed,
+    FieldsUnnamed, GenericParam, Generics, Ident, Lifetime, LifetimeDef, Variant, Visibility,
 };
 
 pub struct EnumInfo {
@@ -74,7 +74,7 @@ impl VariantInfo {
 
     pub fn from_unit(identifier: Ident, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
-        
+
         Ok(VariantInfo::new(
             (quote! { () }, quote! { () }, quote! { () }),
             Vec::new(),
@@ -84,12 +84,20 @@ impl VariantInfo {
         ))
     }
 
-    pub fn from_field(identifier: Ident, field: Field, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+    pub fn from_field(
+        identifier: Ident,
+        field: Field,
+        parent: &EnumInfo,
+    ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
 
         let single = &field.ty;
         Ok(VariantInfo::new(
-            (quote! { #single }, quote! { & #single }, quote! { &mut #single },),
+            (
+                quote! { #single },
+                quote! { & #single },
+                quote! { &mut #single },
+            ),
             Vec::new(),
             quote! { #enum_ident::#identifier( f0 ) },
             (quote! { f0 }, quote! { f0 }, quote! { f0 }),
@@ -97,7 +105,11 @@ impl VariantInfo {
         ))
     }
 
-    pub fn from_unnamed(identifier: Ident, tuple: FieldsUnnamed, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+    pub fn from_unnamed(
+        identifier: Ident,
+        tuple: FieldsUnnamed,
+        parent: &EnumInfo,
+    ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
         let fields: Vec<_> = tuple
             .unnamed
@@ -120,7 +132,11 @@ impl VariantInfo {
         }
 
         Ok(VariantInfo::new(
-            (quote! { #tuple }, quote! { #ref_tuple }, quote! { #mut_tuple }),
+            (
+                quote! { #tuple },
+                quote! { #ref_tuple },
+                quote! { #mut_tuple },
+            ),
             Vec::new(),
             quote! { #enum_ident::#identifier #construction },
             (construction.clone(), construction.clone(), construction),
@@ -128,7 +144,11 @@ impl VariantInfo {
         ))
     }
 
-    pub fn from_named(identifier: Ident, fields: FieldsNamed, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+    pub fn from_named(
+        identifier: Ident,
+        fields: FieldsNamed,
+        parent: &EnumInfo,
+    ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
         let visibility = &parent.visibility;
         let (field_idents, field_types): (Vec<_>, Vec<_>) = fields
@@ -189,11 +209,7 @@ impl VariantInfo {
 
         Ok(VariantInfo::new(
             (data_type, ref_type, mut_type),
-            vec![
-                type_def,
-                ref_def,
-                mut_def,
-            ],
+            vec![type_def, ref_def, mut_def],
             quote! { #enum_ident::#identifier #constructor },
             (data_constr, ref_constr, mut_constr),
             identifier,
