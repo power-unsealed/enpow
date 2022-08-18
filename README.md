@@ -22,3 +22,7 @@ This project is licensed under either of
 at your option.
 
 The [SPDX](https://spdx.dev) license identifier for this project is `MIT OR Apache-2.0`.
+
+---
+
+Licensing derived from [arnavyc](https://github.com/arnavyc)/[dual-licensed-mit-apache](https://github.com/arnavyc/dual-licensed-mit-apache)
