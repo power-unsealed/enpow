@@ -48,7 +48,8 @@ pub struct VariantInfo {
     pub snake_case: String,
     /// Data type of variant data in self, ref, and mut version
     pub data_type: (TokenStream, TokenStream, TokenStream),
-    pub type_defs: Vec<TokenStream>,
+    /// Type definition of variant data in self, ref, and mut version
+    pub type_def: (Option<TokenStream>, Option<TokenStream>, Option<TokenStream>),
     pub pattern: TokenStream,
     /// Construction of variant data in self, ref, and mut version
     pub construction: (TokenStream, TokenStream, TokenStream),
@@ -57,7 +58,7 @@ pub struct VariantInfo {
 impl VariantInfo {
     pub fn new(
         data_type: (TokenStream, TokenStream, TokenStream),
-        type_defs: Vec<TokenStream>,
+        type_def: (Option<TokenStream>, Option<TokenStream>, Option<TokenStream>),
         pattern: TokenStream,
         construction: (TokenStream, TokenStream, TokenStream),
         identifier: Ident,
@@ -66,7 +67,7 @@ impl VariantInfo {
             snake_case: identifier.to_string().to_snake_case(),
             identifier,
             data_type,
-            type_defs,
+            type_def,
             pattern,
             construction,
         }
@@ -77,7 +78,7 @@ impl VariantInfo {
 
         Ok(VariantInfo::new(
             (quote! { () }, quote! { () }, quote! { () }),
-            Vec::new(),
+            (None, None, None),
             quote! { #enum_ident::#identifier },
             (quote! { () }, quote! { () }, quote! { () }),
             identifier,
@@ -98,7 +99,7 @@ impl VariantInfo {
                 quote! { & #single },
                 quote! { &mut #single },
             ),
-            Vec::new(),
+            (None, None, None),
             quote! { #enum_ident::#identifier( f0 ) },
             (quote! { f0 }, quote! { f0 }, quote! { f0 }),
             identifier,
@@ -137,7 +138,7 @@ impl VariantInfo {
                 quote! { #ref_tuple },
                 quote! { #mut_tuple },
             ),
-            Vec::new(),
+            (None, None, None),
             quote! { #enum_ident::#identifier #construction },
             (construction.clone(), construction.clone(), construction),
             identifier,
@@ -209,7 +210,7 @@ impl VariantInfo {
 
         Ok(VariantInfo::new(
             (self_type, ref_type, mut_type),
-            vec![self_def, ref_def, mut_def],
+            (Some(self_def), Some(ref_def), Some(mut_def)),
             quote! { #enum_ident::#identifier #constructor },
             (data_constr, ref_constr, mut_constr),
             identifier,

@@ -27,7 +27,9 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
         .collect::<Result<_, _>>()?;
 
     let mut functions = Vec::new();
-    let mut type_defs = Vec::new();
+    let mut self_defs = Vec::new();
+    let mut ref_defs = Vec::new();
+    let mut mut_defs = Vec::new();
 
     for variant in variants {
         functions.push(variant.build_base());
@@ -40,7 +42,10 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
         functions.push(variant.build_unwrap_or_else());
         functions.push(variant.build_expect());
 
-        type_defs.extend(variant.type_defs.clone());
+        // Save type definitions if there are any
+        self_defs.extend(variant.type_def.0.clone());
+        ref_defs.extend(variant.type_def.1.clone());
+        mut_defs.extend(variant.type_def.2.clone());
     }
 
     let enum_ident = &parent.identifier;
@@ -48,7 +53,9 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
     let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
     Ok(quote! {
-        #(#[allow(unused)] #type_defs)*
+        #(#[allow(unused)] #self_defs)*
+        #(#[allow(unused)] #[derive(Clone, Copy)] #ref_defs)*
+        #(#[allow(unused)] #mut_defs)*
 
         #[automatically_derived]
         #[allow(unused)]
