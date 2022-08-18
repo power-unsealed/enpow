@@ -302,7 +302,7 @@ impl VariantInfo {
             fn #fn_ident(self, msg: &str) -> #data_type {
                 match self {
                     #pattern => #construction,
-                    _ => panic!("{msg}"),
+                    _ => panic!("{}", msg),
                 }
             }
         }
