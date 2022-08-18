@@ -268,6 +268,22 @@ impl VariantInfo {
         }
     }
 
+    pub fn build_is_and(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let pattern = &self.pattern;
+
+        let fn_ident = format_ident!("is_{snake_case}_and");
+
+        quote! {
+            fn #fn_ident(&self, f: impl FnOnce(&Self) -> bool) -> bool {
+                match self {
+                    #pattern => f(self),
+                    _ => false,
+                }
+            }
+        }
+    }
+
     pub fn build_unwrap(&self, parent: &EnumInfo) -> TokenStream {
         let snake_case = &self.snake_case;
         let data_type = &self.data_type.0;

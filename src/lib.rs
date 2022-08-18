@@ -33,6 +33,7 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
         functions.push(variant.build_base());
         functions.push(variant.build_base_as_ref());
         functions.push(variant.build_is());
+        functions.push(variant.build_is_and());
         functions.push(variant.build_unwrap(&parent));
         functions.push(variant.build_unwrap_or());
         functions.push(variant.build_unwrap_or_else());
