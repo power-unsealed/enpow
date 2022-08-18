@@ -115,9 +115,8 @@ mod tests {
     fn unwrap_as_wrong_target() {
         let source = "struct A;";
         let input = TokenStream::from_str(source).unwrap();
-        let result = super::generate(input, &[]).unwrap();
-        let mcr: Macro = syn::parse2(result).unwrap();
-        assert_eq!(mcr.path.get_ident().unwrap(), "compile_error");
+        let result = super::generate(input, &[]);
+        assert!(result.is_err());
     }
 
     #[test]
