@@ -8,7 +8,7 @@ mod helper;
 #[proc_macro_attribute]
 pub fn enpow(
     attribute: proc_macro::TokenStream,
-    item: proc_macro::TokenStream
+    item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     match enpow2(attribute.into(), item.into()) {
         Ok(stream) => stream,
@@ -18,9 +18,7 @@ pub fn enpow(
 }
 
 fn enpow2(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
-    let types: Vec<_> = MethodType::from_attribute(attribute)?
-        .into_iter()
-        .collect();
+    let types: Vec<_> = MethodType::from_attribute(attribute)?.into_iter().collect();
 
     generate(item, &types)
 }
@@ -73,7 +71,10 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
     let mut attr_removed = 0;
     for (i, attr) in parent.attributes.iter().enumerate() {
         let ident = attr.path.get_ident();
-        if ident.map(|i| i.to_string() == "var_derive").unwrap_or(false) {
+        if ident
+            .map(|i| i.to_string() == "var_derive")
+            .unwrap_or(false)
+        {
             // Get the derive Traits
             let info: VarDeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
             derives.extend(info.derives);
@@ -106,10 +107,9 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
 
 #[cfg(test)]
 mod tests {
+    use crate::helper::MethodType;
     use proc_macro2::TokenStream;
     use std::str::FromStr;
-    use syn::Macro;
-    use crate::helper::MethodType;
 
     #[test]
     fn unwrap_as_wrong_target() {

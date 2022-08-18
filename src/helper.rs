@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
+use std::collections::HashSet;
 use syn::{
-    spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed,
-    FieldsUnnamed, GenericParam, Generics, Ident, Lifetime, LifetimeDef, Variant, Visibility,
-    parse::Parse, parse::ParseStream, Token, punctuated::Punctuated, Path, bracketed, parenthesized
+    parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
+    Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed, FieldsUnnamed,
+    GenericParam, Generics, Ident, Lifetime, LifetimeDef, Path, Token, Variant, Visibility,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -94,8 +94,8 @@ impl Parse for EnpowAttributeInfo {
                 some => {
                     return Err(Error::new_spanned(
                         item,
-                        format!("Unknown argument `{some}`"
-                    )));
+                        format!("Unknown argument `{some}`"),
+                    ));
                 }
             }
         }
@@ -119,7 +119,7 @@ impl Parse for VarDeriveAttributeInfo {
             let content;
             parenthesized!(content in input);
             let derives: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
-    
+
             Ok(VarDeriveAttributeInfo {
                 derives: derives.into_iter().collect(),
             })
@@ -171,7 +171,11 @@ pub struct VariantInfo {
     /// Data type of variant data in self, ref, and mut version
     pub data_type: (TokenStream, TokenStream, TokenStream),
     /// Type definition of variant data in self, ref, and mut version
-    pub type_def: (Option<TokenStream>, Option<TokenStream>, Option<TokenStream>),
+    pub type_def: (
+        Option<TokenStream>,
+        Option<TokenStream>,
+        Option<TokenStream>,
+    ),
     pub pattern: TokenStream,
     /// Construction of variant data in self, ref, and mut version
     pub construction: (TokenStream, TokenStream, TokenStream),
@@ -180,7 +184,11 @@ pub struct VariantInfo {
 impl VariantInfo {
     pub fn new(
         data_type: (TokenStream, TokenStream, TokenStream),
-        type_def: (Option<TokenStream>, Option<TokenStream>, Option<TokenStream>),
+        type_def: (
+            Option<TokenStream>,
+            Option<TokenStream>,
+            Option<TokenStream>,
+        ),
         pattern: TokenStream,
         construction: (TokenStream, TokenStream, TokenStream),
         identifier: Ident,
