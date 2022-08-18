@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn unwrap_as() {
         let source =
-            "#[derive(UnwrapAs)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
+            "#[var_derive(Debug)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
         let input = TokenStream::from_str(source).unwrap();
         let result = super::generate(input, &[MethodType::All]).unwrap();
 
