@@ -159,16 +159,16 @@ impl VariantInfo {
         let constructor = quote! { { #(#field_idents),* } };
         let (_, gen_short, gen_where) = parent.generics.split_for_impl();
 
-        // Value struct
+        // Self struct
         let type_ident = format_ident!("{enum_ident}{identifier}");
         let generics = &parent.generics;
-        let data_type = quote! { #type_ident #gen_short };
+        let self_type = quote! { #type_ident #gen_short };
         let fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: #t })
             .collect();
-        let type_def = quote! {
+        let self_def = quote! {
             #visibility struct #type_ident #generics #gen_where { #(#fields),* }
         };
         let data_constr = quote! { #type_ident #constructor };
@@ -184,32 +184,32 @@ impl VariantInfo {
         // Ref struct
         let ref_ident = format_ident!("{type_ident}Ref");
         let ref_type = quote! { #ref_ident #gen_short };
-        let fields_ref: Vec<_> = field_idents
+        let ref_fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: &#lifetime #t })
             .collect();
         let ref_def = quote! {
-            #visibility struct #ref_ident #ref_generics #gen_where { #(#fields_ref),* }
+            #visibility struct #ref_ident #ref_generics #gen_where { #(#ref_fields),* }
         };
         let ref_constr = quote! { #ref_ident #constructor };
 
         // Mut struct
         let mut_ident = format_ident!("{type_ident}Mut");
         let mut_type = quote! { #mut_ident #gen_short };
-        let fields_mut: Vec<_> = field_idents
+        let mut_fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: &#lifetime mut #t })
             .collect();
         let mut_def = quote! {
-            #visibility struct #mut_ident #ref_generics #gen_where { #(#fields_mut),* }
+            #visibility struct #mut_ident #ref_generics #gen_where { #(#mut_fields),* }
         };
         let mut_constr = quote! { #mut_ident #constructor };
 
         Ok(VariantInfo::new(
-            (data_type, ref_type, mut_type),
-            vec![type_def, ref_def, mut_def],
+            (self_type, ref_type, mut_type),
+            vec![self_def, ref_def, mut_def],
             quote! { #enum_ident::#identifier #constructor },
             (data_constr, ref_constr, mut_constr),
             identifier,
