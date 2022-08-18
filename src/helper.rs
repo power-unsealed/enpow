@@ -252,6 +252,24 @@ impl VariantInfo {
         }
     }
 
+    pub fn build_base_as_mut(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type.2;
+        let pattern = &self.pattern;
+        let construction = &self.construction.2;
+
+        let fn_ident = format_ident!("{snake_case}_as_mut");
+
+        quote! {
+            fn #fn_ident(&mut self) -> Option< #data_type > {
+                match self {
+                    #pattern => Some(#construction),
+                    _ => None,
+                }
+            }
+        }
+    }
+
     pub fn build_is(&self) -> TokenStream {
         let snake_case = &self.snake_case;
         let pattern = &self.pattern;
