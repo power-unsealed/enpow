@@ -195,7 +195,7 @@ impl VariantInfo {
         let ref_constr = quote! { #ref_ident #constructor };
 
         // Mut struct
-        let mut_ident = format_ident!("{type_ident}RefMut");
+        let mut_ident = format_ident!("{type_ident}Mut");
         let mut_type = quote! { #mut_ident #gen_short };
         let fields_mut: Vec<_> = field_idents
             .iter()
