@@ -73,3 +73,40 @@ fn is_variant() {
     assert_eq!(Inner::D { a: 0, b: 'd' }.is_b_and(|_| true), false);
     assert_eq!(Inner::D { a: 0, b: 'd' }.is_c_and(|_| true), false);
 }
+
+#[test]
+fn variant_as_ref() {
+    assert_eq!(Inner::<i32, char>::A.a_as_ref(), Some(()));
+    assert_eq!(Inner::<i32, char>::A.b_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::A.c_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::A.d_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::B(0).b_as_ref(), Some(&0));
+    assert_eq!(Inner::<i32, char>::B(0).c_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::B(0).d_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::B(0).a_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::C(0, 'c').c_as_ref(), Some((&0, &'c')));
+    assert_eq!(Inner::<i32, char>::C(0, 'c').d_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::C(0, 'c').a_as_ref(), None);
+    assert_eq!(Inner::<i32, char>::C(0, 'c').b_as_ref(), None);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_ref(), Some(InnerDRef { a: &0, b: &'d' }));
+    assert_eq!(Inner::D { a: 0, b: 'd' }.a_as_ref(), None);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.b_as_ref(), None);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.c_as_ref(), None);
+    
+    assert_eq!(Inner::<i32, char>::A.a_as_mut(), Some(()));
+    assert_eq!(Inner::<i32, char>::A.b_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::A.c_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::A.d_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::B(0).b_as_mut(), Some(&mut 0));
+    assert_eq!(Inner::<i32, char>::B(0).c_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::B(0).d_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::B(0).a_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::C(0, 'c').c_as_mut(), Some((&mut 0, &mut 'c')));
+    assert_eq!(Inner::<i32, char>::C(0, 'c').d_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::C(0, 'c').a_as_mut(), None);
+    assert_eq!(Inner::<i32, char>::C(0, 'c').b_as_mut(), None);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_mut(), Some(InnerDRef { a: &mut 0, b: &mut 'd' }));
+    assert_eq!(Inner::D { a: 0, b: 'd' }.a_as_mut(), None);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.b_as_mut(), None);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.c_as_mut(), None);
+}
