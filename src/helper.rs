@@ -234,7 +234,7 @@ impl VariantInfo {
         }
     }
 
-    pub fn build_base_as_ref(&self) -> TokenStream {
+    pub fn build_as_ref(&self) -> TokenStream {
         let snake_case = &self.snake_case;
         let data_type = &self.data_type.1;
         let pattern = &self.pattern;
@@ -252,7 +252,7 @@ impl VariantInfo {
         }
     }
 
-    pub fn build_base_as_mut(&self) -> TokenStream {
+    pub fn build_as_mut(&self) -> TokenStream {
         let snake_case = &self.snake_case;
         let data_type = &self.data_type.2;
         let pattern = &self.pattern;

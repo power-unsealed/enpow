@@ -31,8 +31,8 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
 
     for variant in variants {
         functions.push(variant.build_base());
-        functions.push(variant.build_base_as_ref());
-        functions.push(variant.build_base_as_mut());
+        functions.push(variant.build_as_ref());
+        functions.push(variant.build_as_mut());
         functions.push(variant.build_is());
         functions.push(variant.build_is_and());
         functions.push(variant.build_unwrap(&parent));
