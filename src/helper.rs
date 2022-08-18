@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
     spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Fields, Generics, Ident,
-    Variant, Visibility,
+    Variant, Visibility, Lifetime, GenericParam, LifetimeDef,
 };
 
 pub struct EnumInfo {
@@ -46,25 +46,27 @@ impl ExtractEnumInfo for DeriveInput {
 pub struct VariantInfo {
     pub identifier: Ident,
     pub snake_case: String,
-    pub data_type: TokenStream,
-    pub type_def: Option<TokenStream>,
+    /// Data type of variant data in self, ref, and mut version
+    pub data_type: (TokenStream, TokenStream, TokenStream),
+    pub type_defs: Vec<TokenStream>,
     pub pattern: TokenStream,
-    pub construction: TokenStream,
+    /// Construction of variant data in self, ref, and mut version
+    pub construction: (TokenStream, TokenStream, TokenStream),
 }
 
 impl VariantInfo {
     pub fn new(
-        data_type: TokenStream,
-        type_def: Option<TokenStream>,
+        data_type: (TokenStream, TokenStream, TokenStream),
+        type_defs: Vec<TokenStream>,
         pattern: TokenStream,
-        construction: TokenStream,
+        construction: (TokenStream, TokenStream, TokenStream),
         identifier: Ident,
     ) -> VariantInfo {
         VariantInfo {
             snake_case: identifier.to_string().to_snake_case(),
             identifier,
             data_type,
-            type_def,
+            type_defs,
             pattern,
             construction,
         }
@@ -72,14 +74,32 @@ impl VariantInfo {
 
     pub fn build_base(&self) -> TokenStream {
         let snake_case = &self.snake_case;
-        let data_type = &self.data_type;
+        let data_type = &self.data_type.0;
         let pattern = &self.pattern;
-        let construction = &self.construction;
+        let construction = &self.construction.0;
 
         let fn_ident = Ident::new(&snake_case, Span::call_site());
 
         quote! {
             fn #fn_ident(self) -> Option< #data_type > {
+                match self {
+                    #pattern => Some(#construction),
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub fn build_base_as_ref(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type.1;
+        let pattern = &self.pattern;
+        let construction = &self.construction.1;
+
+        let fn_ident = format_ident!("{snake_case}_as_ref");
+
+        quote! {
+            fn #fn_ident(&self) -> Option< #data_type > {
                 match self {
                     #pattern => Some(#construction),
                     _ => None,
@@ -106,9 +126,9 @@ impl VariantInfo {
 
     pub fn build_unwrap(&self, parent: &EnumInfo) -> TokenStream {
         let snake_case = &self.snake_case;
-        let data_type = &self.data_type;
+        let data_type = &self.data_type.0;
         let pattern = &self.pattern;
-        let construction = &self.construction;
+        let construction = &self.construction.0;
 
         let fn_ident = format_ident!("unwrap_{snake_case}");
         let panic_msg = format!(
@@ -128,9 +148,9 @@ impl VariantInfo {
 
     pub fn build_expect(&self) -> TokenStream {
         let snake_case = &self.snake_case;
-        let data_type = &self.data_type;
+        let data_type = &self.data_type.0;
         let pattern = &self.pattern;
-        let construction = &self.construction;
+        let construction = &self.construction.0;
 
         let fn_ident = format_ident!("expect_{snake_case}");
 
@@ -146,9 +166,9 @@ impl VariantInfo {
 
     pub fn build_unwrap_or(&self) -> TokenStream {
         let snake_case = &self.snake_case;
-        let data_type = &self.data_type;
+        let data_type = &self.data_type.0;
         let pattern = &self.pattern;
-        let construction = &self.construction;
+        let construction = &self.construction.0;
 
         let fn_ident = format_ident!("unwrap_{snake_case}_or");
 
@@ -164,9 +184,9 @@ impl VariantInfo {
 
     pub fn build_unwrap_or_else(&self) -> TokenStream {
         let snake_case = &self.snake_case;
-        let data_type = &self.data_type;
+        let data_type = &self.data_type.0;
         let pattern = &self.pattern;
-        let construction = &self.construction;
+        let construction = &self.construction.0;
 
         let fn_ident = format_ident!("unwrap_{snake_case}_or_else");
 
@@ -182,34 +202,34 @@ impl VariantInfo {
 }
 
 pub trait ExtractVariantInfo {
-    fn extract_info(self, parent: &EnumInfo) -> VariantInfo;
+    fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error>;
 }
 
 impl ExtractVariantInfo for Variant {
-    fn extract_info(self, parent: &EnumInfo) -> VariantInfo {
+    fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
         let identifier = self.ident;
 
         match self.fields {
             // Variant without data
-            Fields::Unit => VariantInfo::new(
-                quote! { () },
-                None,
+            Fields::Unit => Ok(VariantInfo::new(
+                (quote! { () }, quote! { () }, quote! { () }),
+                Vec::new(),
                 quote! { #enum_ident::#identifier },
-                quote! { () },
+                (quote! { () }, quote! { () }, quote! { () }),
                 identifier,
-            ),
+            )),
 
             // Variant with exactly one unnamed field
             Fields::Unnamed(tuple) if tuple.unnamed.len() == 1 => {
                 let single = &tuple.unnamed[0].ty;
-                VariantInfo::new(
-                    quote! { #single },
-                    None,
+                Ok(VariantInfo::new(
+                    (quote! { #single }, quote! { & #single }, quote! { &mut #single },),
+                    Vec::new(),
                     quote! { #enum_ident::#identifier( f0 ) },
-                    quote! { f0 },
+                    (quote! { f0 }, quote! { f0 }, quote! { f0 }),
                     identifier,
-                )
+                ))
             }
 
             // Variant with more than one unnamed field
@@ -220,45 +240,99 @@ impl ExtractVariantInfo for Variant {
                     .enumerate()
                     .map(|(i, _)| format_ident!("f{i}"))
                     .collect();
+                let construction = quote! { ( #(#fields),* ) };
 
-                VariantInfo::new(
-                    quote! { #tuple },
-                    None,
-                    quote! { #enum_ident::#identifier( #(#fields),* ) },
-                    quote! { ( #(#fields),* ) },
+                let mut ref_tuple = tuple.clone();
+                for field in ref_tuple.unnamed.iter_mut() {
+                    let ftype = &field.ty;
+                    field.ty = syn::parse2(quote! { & #ftype })?;
+                }
+
+                let mut mut_tuple = tuple.clone();
+                for field in mut_tuple.unnamed.iter_mut() {
+                    let ftype = &field.ty;
+                    field.ty = syn::parse2(quote! { &mut #ftype })?;
+                }
+
+                Ok(VariantInfo::new(
+                    (quote! { #tuple }, quote! { #ref_tuple }, quote! { #mut_tuple }),
+                    Vec::new(),
+                    quote! { #enum_ident::#identifier #construction },
+                    (construction.clone(), construction.clone(), construction),
                     identifier,
-                )
+                ))
             }
 
             // Variant with named fields
             Fields::Named(fields) => {
                 let visibility = &parent.visibility;
-                let generics = &parent.generics;
-                let (_, gen_short, gen_where) = parent.generics.split_for_impl();
-                let type_ident = format_ident!("{enum_ident}{identifier}");
-                let data_type = quote! { #type_ident #gen_short };
-
                 let (field_idents, field_types): (Vec<_>, Vec<_>) = fields
                     .named
                     .into_iter()
                     .map(|field| (field.ident.unwrap(), field.ty))
                     .unzip();
+                let constructor = quote! { { #(#field_idents),* } };
+                let (_, gen_short, gen_where) = parent.generics.split_for_impl();
 
+                // Value struct
+                let type_ident = format_ident!("{enum_ident}{identifier}");
+                let generics = &parent.generics;
+                let data_type = quote! { #type_ident #gen_short };
                 let fields: Vec<_> = field_idents
                     .iter()
                     .zip(field_types.iter())
                     .map(|(i, t)| quote! { pub #i: #t })
                     .collect();
+                let type_def = quote! {
+                    #visibility struct #type_ident #generics #gen_where { #(#fields),* }
+                };
+                let data_constr = quote! { #type_ident #constructor };
 
-                VariantInfo::new(
-                    data_type,
-                    Some(quote! {
-                        #visibility struct #type_ident #generics #gen_where { #(#fields),* }
-                    }),
-                    quote! { #enum_ident::#identifier { #(#field_idents),* } },
-                    quote! { #type_ident { #(#field_idents),* } },
+                // Build generics for ref and mut
+                let lifetime_name = format!("'{}", type_ident.to_string().to_snake_case());
+                let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
+                let mut gen_params = generics.params.clone();
+                gen_params.push(GenericParam::Lifetime(LifetimeDef::new(lifetime.clone())));
+                let mut ref_generics = generics.clone();
+                ref_generics.params = gen_params;
+
+                // Ref struct
+                let ref_ident = format_ident!("{type_ident}Ref");
+                let ref_type = quote! { #ref_ident #gen_short };
+                let fields_ref: Vec<_> = field_idents
+                    .iter()
+                    .zip(field_types.iter())
+                    .map(|(i, t)| quote! { pub #i: &#lifetime #t })
+                    .collect();
+                let ref_def = quote! {
+                    #visibility struct #ref_ident #ref_generics #gen_where { #(#fields_ref),* }
+                };
+                let ref_constr = quote! { #ref_ident #constructor };
+
+                // Mut struct
+                let mut_ident = format_ident!("{type_ident}RefMut");
+                let mut_type = quote! { #mut_ident #gen_short };
+                let fields_mut: Vec<_> = field_idents
+                    .iter()
+                    .zip(field_types.iter())
+                    .map(|(i, t)| quote! { pub #i: &#lifetime mut #t })
+                    .collect();
+                let mut_def = quote! {
+                    #visibility struct #mut_ident #ref_generics #gen_where { #(#fields_mut),* }
+                };
+                let mut_constr = quote! { #mut_ident #constructor };
+
+                Ok(VariantInfo::new(
+                    (data_type, ref_type, mut_type),
+                    vec![
+                        type_def,
+                        ref_def,
+                        mut_def,
+                    ],
+                    quote! { #enum_ident::#identifier #constructor },
+                    (data_constr, ref_constr, mut_constr),
                     identifier,
-                )
+                ))
             }
         }
     }
