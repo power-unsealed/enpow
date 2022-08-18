@@ -32,7 +32,9 @@ fn enpow2(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Erro
 
 fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Error> {
     // Find out which type definition are necessary
-    let (mut gen_self_def, mut gen_ref_def, mut gen_mut_def) = (false, false, false);
+    let mut gen_self_def = false;
+    let mut gen_ref_def = false;
+    let mut gen_mut_def = false;
     for t in types {
         gen_self_def = gen_self_def || t.needs_self_type();
         gen_ref_def = gen_ref_def || t.needs_ref_type();
