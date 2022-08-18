@@ -1,4 +1,4 @@
-use helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType};
+use helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType, VarDeriveAttributeInfo};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Error};
@@ -22,12 +22,7 @@ fn enpow2(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Erro
         .into_iter()
         .collect();
 
-    let generated = generate(item.clone(), &types)?;
-
-    Ok(quote! {
-        #item
-        #generated
-    })
+    generate(item, &types)
 }
 
 fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Error> {
@@ -41,9 +36,10 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
         gen_mut_def = gen_mut_def || t.needs_mut_type();
     }
 
+    // Extract the necessray information from the given token stream
     let input: DeriveInput = syn::parse2(input)?;
+    let mut output = input.clone();
     let parent = input.extract_info()?;
-
     let variants: Vec<_> = parent
         .data
         .variants
@@ -52,13 +48,13 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
         .map(|var| var.extract_info(&parent))
         .collect::<Result<_, _>>()?;
 
-    let mut functions = Vec::new();
+    // Generate all requested methods
+    let mut methods = Vec::new();
     let mut self_defs = Vec::new();
     let mut ref_defs = Vec::new();
     let mut mut_defs = Vec::new();
-
     for variant in variants {
-        functions.extend(variant.build_method_types(&parent, &types));
+        methods.extend(variant.build_method_types(&parent, &types));
 
         // Save type definitions as needed
         if gen_self_def {
@@ -72,19 +68,38 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
         }
     }
 
+    // Check for every attached attribute `var_derive`
+    let mut derives = Vec::new();
+    let mut attr_removed = 0;
+    for (i, attr) in parent.attributes.iter().enumerate() {
+        let ident = attr.path.get_ident();
+        if ident.map(|i| i.to_string() == "var_derive").unwrap_or(false) {
+            // Get the derive Traits
+            let info: VarDeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
+            derives.extend(info.derives);
+
+            // Remove this attribute from the output ast
+            output.attrs.remove(i - attr_removed);
+            attr_removed += 1;
+        }
+    }
+    let derives = quote! { #[derive(#(#derives),*)] };
+
     let enum_ident = &parent.identifier;
     let visibility = &parent.visibility;
     let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
     Ok(quote! {
-        #(#[allow(unused)] #self_defs)*
+        #output
+
+        #(#[allow(unused)] #derives #self_defs)*
         #(#[allow(unused)] #[derive(Clone, Copy)] #ref_defs)*
         #(#[allow(unused)] #mut_defs)*
 
         #[automatically_derived]
         #[allow(unused)]
         impl #gen_full #enum_ident #gen_short #gen_where {
-            #(#visibility #functions)*
+            #(#visibility #methods)*
         }
     })
 }

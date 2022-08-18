@@ -1,11 +1,10 @@
 use std::collections::HashSet;
-
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
     spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed,
     FieldsUnnamed, GenericParam, Generics, Ident, Lifetime, LifetimeDef, Variant, Visibility,
-    parse::Parse, parse::ParseStream, Token, punctuated::Punctuated
+    parse::Parse, parse::ParseStream, Token, punctuated::Punctuated, Path, bracketed, parenthesized
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -20,7 +19,7 @@ pub enum MethodType {
 
 impl MethodType {
     pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<MethodType>, Error> {
-        let info: AttributeInfo = syn::parse2(attribute)?;
+        let info: EnpowAttributeInfo = syn::parse2(attribute)?;
         Ok(info.methods)
     }
 
@@ -58,11 +57,11 @@ impl MethodType {
     }
 }
 
-pub struct AttributeInfo {
+pub struct EnpowAttributeInfo {
     methods: HashSet<MethodType>,
 }
 
-impl Parse for AttributeInfo {
+impl Parse for EnpowAttributeInfo {
     fn parse(input: ParseStream) -> Result<Self, Error> {
         let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
         let mut methods = HashSet::new();
@@ -101,7 +100,30 @@ impl Parse for AttributeInfo {
             }
         }
 
-        Ok(AttributeInfo { methods })
+        Ok(EnpowAttributeInfo { methods })
+    }
+}
+
+pub struct VarDeriveAttributeInfo {
+    pub derives: Vec<Path>,
+}
+
+impl Parse for VarDeriveAttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        if input.is_empty() {
+            Ok(VarDeriveAttributeInfo {
+                derives: Vec::new(),
+            })
+        } else {
+            // Parse the derive arguments in parenthesis
+            let content;
+            parenthesized!(content in input);
+            let derives: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
+    
+            Ok(VarDeriveAttributeInfo {
+                derives: derives.into_iter().collect(),
+            })
+        }
     }
 }
 
