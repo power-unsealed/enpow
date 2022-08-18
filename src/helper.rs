@@ -1,12 +1,16 @@
+use std::collections::HashSet;
+
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
     spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed,
     FieldsUnnamed, GenericParam, Generics, Ident, Lifetime, LifetimeDef, Variant, Visibility,
+    parse::Parse, parse::ParseStream, Token, punctuated::Punctuated
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MethodType {
+    All,
     Variant,
     IsVariant,
     VariantAsRef,
@@ -15,8 +19,14 @@ pub enum MethodType {
 }
 
 impl MethodType {
+    pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<MethodType>, Error> {
+        let info: AttributeInfo = syn::parse2(attribute)?;
+        Ok(info.methods)
+    }
+
     pub fn needs_self_type(&self) -> bool {
         match self {
+            MethodType::All => true,
             MethodType::Variant => true,
             MethodType::IsVariant => false,
             MethodType::VariantAsRef => false,
@@ -27,6 +37,7 @@ impl MethodType {
 
     pub fn needs_ref_type(&self) -> bool {
         match self {
+            MethodType::All => true,
             MethodType::Variant => false,
             MethodType::IsVariant => true,
             MethodType::VariantAsRef => true,
@@ -37,12 +48,60 @@ impl MethodType {
 
     pub fn needs_mut_type(&self) -> bool {
         match self {
+            MethodType::All => true,
             MethodType::Variant => false,
             MethodType::IsVariant => false,
             MethodType::VariantAsRef => true,
             MethodType::UnwrapVariant => false,
             MethodType::ExpectVariant => false,
         }
+    }
+}
+
+pub struct AttributeInfo {
+    methods: HashSet<MethodType>,
+}
+
+impl Parse for AttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
+        let mut methods = HashSet::new();
+
+        // If there are no arguments, insert a fake "All"
+        if items.is_empty() {
+            items.push(Ident::new("All", Span::call_site()));
+        }
+
+        for item in items {
+            match item.to_string().as_str() {
+                "All" => {
+                    methods.insert(MethodType::All);
+                }
+                "Var" => {
+                    methods.insert(MethodType::Variant);
+                }
+                "IsVar" => {
+                    methods.insert(MethodType::IsVariant);
+                }
+                "VarAsRef" => {
+                    methods.insert(MethodType::VariantAsRef);
+                }
+                "UnwrapVar" => {
+                    methods.insert(MethodType::UnwrapVariant);
+                }
+                "ExpectVar" => {
+                    methods.insert(MethodType::ExpectVariant);
+                }
+                some => {
+                    return Err(Error::new_spanned(
+                        item,
+                        format!("Unknown argument `{some}`"
+                    )));
+                }
+            }
+        }
+
+        Ok(AttributeInfo { methods })
     }
 }
 
@@ -262,6 +321,17 @@ impl VariantInfo {
         let mut methods = Vec::new();
         for t in types {
             match t {
+                MethodType::All => {
+                    methods.push(self.build_variant());
+                    methods.push(self.build_is());
+                    methods.push(self.build_is_and());
+                    methods.push(self.build_as_ref());
+                    methods.push(self.build_as_mut());
+                    methods.push(self.build_unwrap(parent));
+                    methods.push(self.build_unwrap_or());
+                    methods.push(self.build_unwrap_or_else());
+                    methods.push(self.build_expect());
+                }
                 MethodType::Variant => {
                     methods.push(self.build_variant());
                 }

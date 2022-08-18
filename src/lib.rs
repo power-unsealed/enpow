@@ -5,21 +5,29 @@ use syn::{DeriveInput, Error};
 
 mod helper;
 
-#[proc_macro_derive(UnwrapAs)]
-pub fn entry(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let types = [
-        MethodType::Variant,
-        MethodType::IsVariant,
-        MethodType::VariantAsRef,
-        MethodType::UnwrapVariant,
-        MethodType::ExpectVariant,
-    ];
-
-    match generate(input.into(), &types) {
+#[proc_macro_attribute]
+pub fn enpow(
+    attribute: proc_macro::TokenStream,
+    item: proc_macro::TokenStream
+) -> proc_macro::TokenStream {
+    match enpow2(attribute.into(), item.into()) {
         Ok(stream) => stream,
-        Err(error) => error.into_compile_error(),
+        Err(error) => error.to_compile_error(),
     }
     .into()
+}
+
+fn enpow2(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
+    let types: Vec<_> = MethodType::from_attribute(attribute)?
+        .into_iter()
+        .collect();
+
+    let generated = generate(item.clone(), &types)?;
+
+    Ok(quote! {
+        #item
+        #generated
+    })
 }
 
 fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Error> {
@@ -100,13 +108,7 @@ mod tests {
         let source =
             "#[derive(UnwrapAs)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
         let input = TokenStream::from_str(source).unwrap();
-        let result = super::generate(input, &[
-            MethodType::Variant,
-            MethodType::IsVariant,
-            MethodType::VariantAsRef,
-            MethodType::UnwrapVariant,
-            MethodType::ExpectVariant,
-        ]).unwrap();
+        let result = super::generate(input, &[MethodType::All]).unwrap();
 
         println!("{result}");
     }
