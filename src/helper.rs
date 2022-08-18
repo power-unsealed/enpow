@@ -5,13 +5,45 @@ use syn::{
     FieldsUnnamed, GenericParam, Generics, Ident, Lifetime, LifetimeDef, Variant, Visibility,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum MethodType {
     Variant,
     IsVariant,
     VariantAsRef,
     UnwrapVariant,
     ExpectVariant,
+}
+
+impl MethodType {
+    pub fn needs_self_type(&self) -> bool {
+        match self {
+            MethodType::Variant => true,
+            MethodType::IsVariant => false,
+            MethodType::VariantAsRef => false,
+            MethodType::UnwrapVariant => true,
+            MethodType::ExpectVariant => true,
+        }
+    }
+
+    pub fn needs_ref_type(&self) -> bool {
+        match self {
+            MethodType::Variant => false,
+            MethodType::IsVariant => true,
+            MethodType::VariantAsRef => true,
+            MethodType::UnwrapVariant => false,
+            MethodType::ExpectVariant => false,
+        }
+    }
+
+    pub fn needs_mut_type(&self) -> bool {
+        match self {
+            MethodType::Variant => false,
+            MethodType::IsVariant => false,
+            MethodType::VariantAsRef => true,
+            MethodType::UnwrapVariant => false,
+            MethodType::ExpectVariant => false,
+        }
+    }
 }
 
 pub struct EnumInfo {
@@ -226,7 +258,7 @@ impl VariantInfo {
         ))
     }
 
-    pub fn build_type(&self, parent: &EnumInfo, types: &[MethodType]) -> Vec<TokenStream> {
+    pub fn build_method_types(&self, parent: &EnumInfo, types: &[MethodType]) -> Vec<TokenStream> {
         let mut methods = Vec::new();
         for t in types {
             match t {

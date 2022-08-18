@@ -1,21 +1,37 @@
 use helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType};
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_macro_input, DeriveInput, Error};
+use quote::quote;
+use syn::{DeriveInput, Error};
 
 mod helper;
 
 #[proc_macro_derive(UnwrapAs)]
-pub fn unwrap_as_entry(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    match unwrap_as(input) {
+pub fn entry(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let types = [
+        MethodType::Variant,
+        MethodType::IsVariant,
+        MethodType::VariantAsRef,
+        MethodType::UnwrapVariant,
+        MethodType::ExpectVariant,
+    ];
+
+    match generate(input.into(), &types) {
         Ok(stream) => stream,
         Err(error) => error.into_compile_error(),
     }
     .into()
 }
 
-fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
+fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Error> {
+    // Find out which type definition are necessary
+    let (mut gen_self_def, mut gen_ref_def, mut gen_mut_def) = (false, false, false);
+    for t in types {
+        gen_self_def = gen_self_def || t.needs_self_type();
+        gen_ref_def = gen_ref_def || t.needs_ref_type();
+        gen_mut_def = gen_mut_def || t.needs_mut_type();
+    }
+
+    let input: DeriveInput = syn::parse2(input)?;
     let parent = input.extract_info()?;
 
     let variants: Vec<_> = parent
@@ -32,18 +48,18 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
     let mut mut_defs = Vec::new();
 
     for variant in variants {
-        functions.extend(variant.build_type(&parent, &[
-            MethodType::Variant,
-            MethodType::IsVariant,
-            MethodType::VariantAsRef,
-            MethodType::UnwrapVariant,
-            MethodType::ExpectVariant,
-        ]));
+        functions.extend(variant.build_method_types(&parent, &types));
 
-        // Save type definitions if there are any
-        self_defs.extend(variant.type_def.0.clone());
-        ref_defs.extend(variant.type_def.1.clone());
-        mut_defs.extend(variant.type_def.2.clone());
+        // Save type definitions as needed
+        if gen_self_def {
+            self_defs.extend(variant.type_def.0.clone());
+        }
+        if gen_ref_def {
+            ref_defs.extend(variant.type_def.1.clone());
+        }
+        if gen_mut_def {
+            mut_defs.extend(variant.type_def.2.clone());
+        }
     }
 
     let enum_ident = &parent.identifier;
@@ -67,14 +83,14 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
 mod tests {
     use proc_macro2::TokenStream;
     use std::str::FromStr;
-    use syn::{DeriveInput, Macro};
+    use syn::Macro;
+    use crate::helper::MethodType;
 
     #[test]
     fn unwrap_as_wrong_target() {
         let source = "struct A;";
-        let tokens = TokenStream::from_str(source).unwrap();
-        let input: DeriveInput = syn::parse2(tokens).unwrap();
-        let result = super::unwrap_as(input).unwrap();
+        let input = TokenStream::from_str(source).unwrap();
+        let result = super::generate(input, &[]).unwrap();
         let mcr: Macro = syn::parse2(result).unwrap();
         assert_eq!(mcr.path.get_ident().unwrap(), "compile_error");
     }
@@ -83,9 +99,14 @@ mod tests {
     fn unwrap_as() {
         let source =
             "#[derive(UnwrapAs)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
-        let tokens = TokenStream::from_str(source).unwrap();
-        let input: DeriveInput = syn::parse2(tokens).unwrap();
-        let result = super::unwrap_as(input).unwrap();
+        let input = TokenStream::from_str(source).unwrap();
+        let result = super::generate(input, &[
+            MethodType::Variant,
+            MethodType::IsVariant,
+            MethodType::VariantAsRef,
+            MethodType::UnwrapVariant,
+            MethodType::ExpectVariant,
+        ]).unwrap();
 
         println!("{result}");
     }
