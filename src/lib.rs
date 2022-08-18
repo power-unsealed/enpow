@@ -42,6 +42,7 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
     }
 
     let enum_ident = &parent.identifier;
+    let visibility = &parent.visibility;
     let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
     Ok(quote! {
@@ -50,7 +51,7 @@ fn unwrap_as(input: DeriveInput) -> Result<TokenStream, Error> {
         #[automatically_derived]
         #[allow(unused)]
         impl #gen_full #enum_ident #gen_short #gen_where {
-            #(#functions)*
+            #(#visibility #functions)*
         }
     })
 }
