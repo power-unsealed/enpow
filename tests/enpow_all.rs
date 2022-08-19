@@ -17,6 +17,7 @@ use std::panic::catch_unwind;
 use outer::*;
 
 #[test]
+#[rustfmt::skip]
 fn variant() {
     assert_eq!(Inner::<i32, char>::A.a(), Some(()));
     assert_eq!(Inner::<i32, char>::A.b(), None);
@@ -37,6 +38,7 @@ fn variant() {
 }
 
 #[test]
+#[rustfmt::skip]
 fn is_variant() {
     assert_eq!(Inner::<i32, char>::A.is_a(), true);
     assert_eq!(Inner::<i32, char>::A.is_b(), false);
@@ -78,6 +80,7 @@ fn is_variant() {
 }
 
 #[test]
+#[rustfmt::skip]
 fn variant_as_ref() {
     assert_eq!(Inner::<i32, char>::A.a_as_ref(), Some(()));
     assert_eq!(Inner::<i32, char>::A.b_as_ref(), None);
@@ -115,6 +118,7 @@ fn variant_as_ref() {
 }
 
 #[test]
+#[rustfmt::skip]
 fn unwrap_variant() {
     Inner::<i32, char>::A.unwrap_a();
     catch_unwind(|| Inner::<i32, char>::A.unwrap_b()).unwrap_err();
@@ -169,6 +173,7 @@ fn unwrap_variant() {
 }
 
 #[test]
+#[rustfmt::skip]
 fn expect_variant() {
     Inner::<i32, char>::A.expect_a("");
     catch_unwind(|| Inner::<i32, char>::A.expect_b("")).unwrap_err();

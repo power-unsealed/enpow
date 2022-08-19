@@ -96,10 +96,15 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
         quote!(marker::Copy).to_string(),
         quote!(Copy).to_string(),
     ];
-    let ref_derives: Vec<_> = self_derives.iter()
+    let ref_derives: Vec<_> = self_derives
+        .iter()
         .map(|path| (path.to_token_stream().to_string(), path))
         .filter_map(|(pathstr, path)| {
-            if derive_filter.contains(&pathstr) { None } else { Some(path) }
+            if derive_filter.contains(&pathstr) {
+                None
+            } else {
+                Some(path)
+            }
         })
         .collect();
 
