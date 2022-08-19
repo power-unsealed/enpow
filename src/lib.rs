@@ -112,7 +112,7 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn unwrap_as_wrong_target() {
+    fn enpow_wrong_target() {
         let source = "struct A;";
         let input = TokenStream::from_str(source).unwrap();
         let result = super::generate(input, &[]);
@@ -120,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn unwrap_as() {
+    fn enpow() {
         let source =
             "#[var_derive(Debug)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
         let input = TokenStream::from_str(source).unwrap();
