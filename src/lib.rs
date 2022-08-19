@@ -1,7 +1,7 @@
 use helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType, VarDeriveAttributeInfo};
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{DeriveInput, Error};
+use quote::{quote, ToTokens};
+use syn::{DeriveInput, Error, Path};
 
 mod helper;
 
@@ -67,7 +67,7 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
     }
 
     // Check for every attached attribute `var_derive`
-    let mut derives = Vec::new();
+    let mut self_derives = Vec::new();
     let mut attr_removed = 0;
     for (i, attr) in parent.attributes.iter().enumerate() {
         let ident = attr.path.get_ident();
@@ -77,14 +77,35 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
         {
             // Get the derive Traits
             let info: VarDeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
-            derives.extend(info.derives);
+            self_derives.extend(info.derives);
 
             // Remove this attribute from the output ast
             output.attrs.remove(i - attr_removed);
             attr_removed += 1;
         }
     }
-    let derives = quote! { #[derive(#(#derives),*)] };
+
+    // Ref already has Clone and Copy, while mut is not allowed to get Clone and Copy.
+    // Because of the dynamic import system, we cannot say for sure how these macros are
+    // identified -> best efford
+    let derive_filter: [String; 6] = [
+        quote!(core::clone::Clone).to_string(),
+        quote!(clone::Clone).to_string(),
+        quote!(Clone).to_string(),
+        quote!(core::marker::Copy).to_string(),
+        quote!(marker::Copy).to_string(),
+        quote!(Copy).to_string(),
+    ];
+    let ref_derives: Vec<_> = self_derives.iter()
+        .map(|path| (path.to_token_stream().to_string(), path))
+        .filter_map(|(pathstr, path)| {
+            if derive_filter.contains(&pathstr) { None } else { Some(path) }
+        })
+        .collect();
+
+    // Build the derive macro tokens
+    let self_derives = quote! { #[derive(#(#self_derives),*)] };
+    let ref_derives = quote! { #[derive(#(#ref_derives),*)] };
 
     let enum_ident = &parent.identifier;
     let visibility = &parent.visibility;
@@ -93,9 +114,9 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
     Ok(quote! {
         #output
 
-        #(#[allow(unused)] #derives #self_defs)*
-        #(#[allow(unused)] #[derive(Clone, Copy)] #ref_defs)*
-        #(#[allow(unused)] #mut_defs)*
+        #(#[allow(unused)] #self_derives #self_defs)*
+        #(#[allow(unused)] #ref_derives #[derive(Clone, Copy)] #ref_defs)*
+        #(#[allow(unused)] #ref_derives #mut_defs)*
 
         #[automatically_derived]
         #[allow(unused)]
@@ -122,7 +143,7 @@ mod tests {
     #[test]
     fn enpow() {
         let source =
-            "#[var_derive(Debug)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
+            "#[var_derive(Clone, Debug)] pub enum Test<T> where T: Display { A, B(u32), C(i32, i64), D { a: u32, b: T }, }";
         let input = TokenStream::from_str(source).unwrap();
         let result = super::generate(input, &[MethodType::All]).unwrap();
 
