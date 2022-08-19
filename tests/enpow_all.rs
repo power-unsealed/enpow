@@ -167,3 +167,23 @@ fn unwrap_variant() {
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_b_or_else(|_| 0), 0);
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_c_or_else(|_| (0, 'c')), (0, 'c'));
 }
+
+#[test]
+fn expect_variant() {
+    Inner::<i32, char>::A.expect_a("");
+    catch_unwind(|| Inner::<i32, char>::A.expect_b("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::A.expect_c("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::A.expect_d("")).unwrap_err();
+    Inner::<i32, char>::B(0).expect_b("");
+    catch_unwind(|| Inner::<i32, char>::B(0).expect_c("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::B(0).expect_d("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::B(0).expect_a("")).unwrap_err();
+    Inner::<i32, char>::C(0, 'c').expect_c("");
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').expect_d("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').expect_a("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').expect_b("")).unwrap_err();
+    Inner::D { a: 0, b: 'd' }.expect_d("");
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_a("")).unwrap_err();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_b("")).unwrap_err();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_c("")).unwrap_err();
+}
