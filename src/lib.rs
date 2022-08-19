@@ -1,7 +1,7 @@
 use helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType, VarDeriveAttributeInfo};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{DeriveInput, Error, Path};
+use syn::{DeriveInput, Error};
 
 mod helper;
 
