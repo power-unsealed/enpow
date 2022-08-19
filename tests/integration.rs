@@ -105,7 +105,7 @@ fn variant_as_ref() {
     assert_eq!(Inner::<i32, char>::C(0, 'c').d_as_mut(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').a_as_mut(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').b_as_mut(), None);
-    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_mut(), Some(InnerDRef { a: &mut 0, b: &mut 'd' }));
+    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_mut(), Some(InnerDMut { a: &mut 0, b: &mut 'd' }));
     assert_eq!(Inner::D { a: 0, b: 'd' }.a_as_mut(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.b_as_mut(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.c_as_mut(), None);
