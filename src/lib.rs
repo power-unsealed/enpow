@@ -22,6 +22,12 @@
 //! - `UnwrapVar`
 //!     * `fn unwrap_<variant>(self) -> <inner>`
 //!       Returns the inner data, if the enum value is of the expected type, otherwise panics.
+//!     * `fn unwrap_<variant>_as_ref(self) -> <inner>`
+//!       Returns a reference to the inner data, if the enum value is of the expected type,
+//!       otherwise panics.
+//!     * `fn unwrap_<variant>_as_mut(self) -> <inner>`
+//!       Returns a mutable reference to the inner data, if the enum value is of the expected type,
+//!       otherwise panics.
 //!     * `fn unwrap_<variant>_or(self, default: <inner>) -> <inner>`
 //!       Returns the inner data, if the enum value is of the expected type, otherwise returns the
 //!       given default value.
@@ -32,6 +38,12 @@
 //!     * `fn expect_<variant>(self, msg: &str) -> <inner>`
 //!       Returns the inner data, if the enum is of the expected type, otherwise panics with the
 //!       given error message.
+//!     * `fn expect_<variant>_as_ref(self, msg: &str) -> <inner>`
+//!       Returns a reference to the inner data, if the enum is of the expected type, otherwise
+//!       panics with the given error message.
+//!     * `fn expect_<variant>_as_mut(self, msg: &str) -> <inner>`
+//!       Returns a mutable reference to the inner data, if the enum is of the expected type,
+//!       otherwise panics with the given error message.
 //! 
 //! ## Usage Example
 //! 
@@ -180,37 +192,11 @@ mod helper;
 /// generated from the variant name turned into snake case.
 ///
 /// - `Var`
-///     * `fn <variant>(self) -> Option<<inner>>`
-///       Return the inner data, if the enum value is of the expected type, otherwise returns
-///       `None`.
 /// - `IsVar`
-///     * `fn is_<variant>(&self) -> bool`
-///       Returns `true`, if the enum value is of the expected type, otherwise returns `false`.
-///     * `fn is_<variant>_and(&self, f: impl FnOnce(<ref_inner>) -> bool) -> bool`
-///       Returns `true`, if the enum value is of the expected type and the given closure
-///       evalutates to `true`, otherwise returns `false`.
 /// - `VarAsRef`
-///     * `fn <variant>_as_ref(&self) -> Option<<ref_inner>>`
-///       Returns a reference to the inner data, if the enum value is of the expected type,
-///       otherwise returns `None`.
-///     * `fn <variant>_as_mut(&mut self) -> Option<<mut_inner>>`
-///       Returns a mutable reference to the inner data, if the enum value is of the expected type,
-///       otherwise returns `None`.
 /// - `UnwrapVar`
-///     * `fn unwrap_<variant>(self) -> <inner>`
-///       Returns the inner data, if the enum value is of the expected type, otherwise panics.
-///     * `fn unwrap_<variant>_or(self, default: <inner>) -> <inner>`
-///       Returns the inner data, if the enum value is of the expected type, otherwise returns the
-///       given default value.
-///     * `fn unwrap_<variant>_or_else(self, f: impl FnOnce(Self) -> <inner>) -> <inner>`
-///       Returns the inner data, if the enum value is of the expected type, otherwise returns the
-///       value that the given closure evaluated to.
 /// - `ExpectVar`
-///     * `fn expect_<variant>(self, msg: &str) -> <inner>`
-///       Returns the inner data, if the enum is of the expected type, otherwise panics with the
-///       given error message.
 /// - `All`
-///     * All methods mentioned above
 ///
 /// ```rust
 /// # use enpow::enpow;

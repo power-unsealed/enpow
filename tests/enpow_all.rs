@@ -137,6 +137,40 @@ fn unwrap_variant() {
     catch_unwind(|| Inner::D { a: 0, b: 'd' }.unwrap_b()).unwrap_err();
     catch_unwind(|| Inner::D { a: 0, b: 'd' }.unwrap_c()).unwrap_err();
 
+    Inner::<i32, char>::A.unwrap_a_as_ref();
+    catch_unwind(|| Inner::<i32, char>::A.unwrap_b_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::A.unwrap_c_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::A.unwrap_d_as_ref()).unwrap_err();
+    Inner::<i32, char>::B(0).unwrap_b_as_ref();
+    catch_unwind(|| Inner::<i32, char>::B(0).unwrap_c_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::B(0).unwrap_d_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::B(0).unwrap_a_as_ref()).unwrap_err();
+    Inner::<i32, char>::C(0, 'c').unwrap_c_as_ref();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').unwrap_d_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').unwrap_a_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').unwrap_b_as_ref()).unwrap_err();
+    Inner::D { a: 0, b: 'd' }.unwrap_d_as_ref();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.unwrap_a_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.unwrap_b_as_ref()).unwrap_err();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.unwrap_c_as_ref()).unwrap_err();
+
+    Inner::<i32, char>::A.unwrap_a_as_mut();
+    catch_unwind(|| { Inner::<i32, char>::A.unwrap_b_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::A.unwrap_c_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::A.unwrap_d_as_mut(); }).unwrap_err();
+    Inner::<i32, char>::B(0).unwrap_b_as_mut();
+    catch_unwind(|| { Inner::<i32, char>::B(0).unwrap_c_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::B(0).unwrap_d_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::B(0).unwrap_a_as_mut(); }).unwrap_err();
+    Inner::<i32, char>::C(0, 'c').unwrap_c_as_mut();
+    catch_unwind(|| { Inner::<i32, char>::C(0, 'c').unwrap_d_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::C(0, 'c').unwrap_a_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::C(0, 'c').unwrap_b_as_mut(); }).unwrap_err();
+    Inner::D { a: 0, b: 'd' }.unwrap_d_as_mut();
+    catch_unwind(|| { Inner::D { a: 0, b: 'd' }.unwrap_a_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::D { a: 0, b: 'd' }.unwrap_b_as_mut(); }).unwrap_err();
+    catch_unwind(|| { Inner::D { a: 0, b: 'd' }.unwrap_c_as_mut(); }).unwrap_err();
+
     assert_eq!(Inner::<i32, char>::A.unwrap_a_or(()), ());
     assert_eq!(Inner::<i32, char>::A.unwrap_b_or(0), 0);
     assert_eq!(Inner::<i32, char>::A.unwrap_c_or((0, 'c')), (0, 'c'));
@@ -191,4 +225,38 @@ fn expect_variant() {
     catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_a("")).unwrap_err();
     catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_b("")).unwrap_err();
     catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_c("")).unwrap_err();
+    
+    Inner::<i32, char>::A.expect_a_as_ref("");
+    catch_unwind(|| Inner::<i32, char>::A.expect_b_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::A.expect_c_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::A.expect_d_as_ref("")).unwrap_err();
+    Inner::<i32, char>::B(0).expect_b_as_ref("");
+    catch_unwind(|| Inner::<i32, char>::B(0).expect_c_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::B(0).expect_d_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::B(0).expect_a_as_ref("")).unwrap_err();
+    Inner::<i32, char>::C(0, 'c').expect_c_as_ref("");
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').expect_d_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').expect_a_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::<i32, char>::C(0, 'c').expect_b_as_ref("")).unwrap_err();
+    Inner::D { a: 0, b: 'd' }.expect_d_as_ref("");
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_a_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_b_as_ref("")).unwrap_err();
+    catch_unwind(|| Inner::D { a: 0, b: 'd' }.expect_c_as_ref("")).unwrap_err();
+    
+    Inner::<i32, char>::A.expect_a_as_mut("");
+    catch_unwind(|| { Inner::<i32, char>::A.expect_b_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::A.expect_c_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::A.expect_d_as_mut(""); }).unwrap_err();
+    Inner::<i32, char>::B(0).expect_b_as_mut("");
+    catch_unwind(|| { Inner::<i32, char>::B(0).expect_c_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::B(0).expect_d_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::B(0).expect_a_as_mut(""); }).unwrap_err();
+    Inner::<i32, char>::C(0, 'c').expect_c_as_mut("");
+    catch_unwind(|| { Inner::<i32, char>::C(0, 'c').expect_d_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::C(0, 'c').expect_a_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::<i32, char>::C(0, 'c').expect_b_as_mut(""); }).unwrap_err();
+    Inner::D { a: 0, b: 'd' }.expect_d_as_mut("");
+    catch_unwind(|| { Inner::D { a: 0, b: 'd' }.expect_a_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::D { a: 0, b: 'd' }.expect_b_as_mut(""); }).unwrap_err();
+    catch_unwind(|| { Inner::D { a: 0, b: 'd' }.expect_c_as_mut(""); }).unwrap_err();
 }

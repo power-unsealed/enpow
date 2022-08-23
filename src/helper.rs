@@ -358,9 +358,13 @@ impl VariantInfo {
                     methods.push(self.build_as_ref());
                     methods.push(self.build_as_mut());
                     methods.push(self.build_unwrap(parent));
+                    methods.push(self.build_unwrap_as_ref(parent));
+                    methods.push(self.build_unwrap_as_mut(parent));
                     methods.push(self.build_unwrap_or());
                     methods.push(self.build_unwrap_or_else());
                     methods.push(self.build_expect());
+                    methods.push(self.build_expect_as_ref());
+                    methods.push(self.build_expect_as_mut());
                 }
                 MethodType::Variant => {
                     methods.push(self.build_variant());
@@ -375,11 +379,15 @@ impl VariantInfo {
                 }
                 MethodType::UnwrapVariant => {
                     methods.push(self.build_unwrap(parent));
+                    methods.push(self.build_unwrap_as_ref(parent));
+                    methods.push(self.build_unwrap_as_mut(parent));
                     methods.push(self.build_unwrap_or());
                     methods.push(self.build_unwrap_or_else());
                 }
                 MethodType::ExpectVariant => {
                     methods.push(self.build_expect());
+                    methods.push(self.build_expect_as_ref());
+                    methods.push(self.build_expect_as_mut());
                 }
             }
         }
@@ -496,19 +504,45 @@ impl VariantInfo {
         }
     }
 
-    pub fn build_expect(&self) -> TokenStream {
+    pub fn build_unwrap_as_ref(&self, parent: &EnumInfo) -> TokenStream {
         let snake_case = &self.snake_case;
-        let data_type = &self.data_type.0;
+        let data_type = &self.data_type.1;
         let pattern = &self.pattern;
-        let construction = &self.construction.0;
+        let construction = &self.construction.1;
 
-        let fn_ident = format_ident!("expect_{snake_case}");
+        let fn_ident = format_ident!("unwrap_{snake_case}_as_ref");
+        let panic_msg = format!(
+            "Failed unwrapping to {}::{}. Unexpected variant",
+            parent.identifier, self.identifier,
+        );
 
         quote! {
-            fn #fn_ident(self, msg: &str) -> #data_type {
+            fn #fn_ident(&self) -> #data_type {
                 match self {
                     #pattern => #construction,
-                    _ => panic!("{}", msg),
+                    _ => panic!(#panic_msg),
+                }
+            }
+        }
+    }
+
+    pub fn build_unwrap_as_mut(&self, parent: &EnumInfo) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type.2;
+        let pattern = &self.pattern;
+        let construction = &self.construction.2;
+
+        let fn_ident = format_ident!("unwrap_{snake_case}_as_mut");
+        let panic_msg = format!(
+            "Failed unwrapping to {}::{}. Unexpected variant",
+            parent.identifier, self.identifier,
+        );
+
+        quote! {
+            fn #fn_ident(&mut self) -> #data_type {
+                match self {
+                    #pattern => #construction,
+                    _ => panic!(#panic_msg),
                 }
             }
         }
@@ -545,6 +579,60 @@ impl VariantInfo {
                 match self {
                     #pattern => #construction,
                     some => f(some),
+                }
+            }
+        }
+    }
+
+    pub fn build_expect(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type.0;
+        let pattern = &self.pattern;
+        let construction = &self.construction.0;
+
+        let fn_ident = format_ident!("expect_{snake_case}");
+
+        quote! {
+            fn #fn_ident(self, msg: &str) -> #data_type {
+                match self {
+                    #pattern => #construction,
+                    _ => panic!("{}", msg),
+                }
+            }
+        }
+    }
+
+    pub fn build_expect_as_ref(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type.1;
+        let pattern = &self.pattern;
+        let construction = &self.construction.1;
+
+        let fn_ident = format_ident!("expect_{snake_case}_as_ref");
+
+        quote! {
+            fn #fn_ident(&self, msg: &str) -> #data_type {
+                match self {
+                    #pattern => #construction,
+                    _ => panic!("{}", msg),
+                }
+            }
+        }
+    }
+
+    pub fn build_expect_as_mut(&self) -> TokenStream {
+        let snake_case = &self.snake_case;
+        let data_type = &self.data_type.2;
+        let pattern = &self.pattern;
+        let construction = &self.construction.2;
+
+        let fn_ident = format_ident!("expect_{snake_case}_as_mut");
+
+        quote! {
+            fn #fn_ident(&mut self, msg: &str) -> #data_type {
+                match self {
+                    #pattern => #construction,
+                    _ => panic!("{}", msg),
                 }
             }
         }
