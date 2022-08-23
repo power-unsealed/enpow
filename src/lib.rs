@@ -223,7 +223,7 @@ mod helper;
 ///
 /// Attaching the additional attribute `enpow_derive()` __below__ `enpow` adds the specified auto
 /// trait derives to the automatically generated types. `Ref` structs always automatically derive
-/// `Clone` and `Copy`, while `RefMut` structs are prohibited from deriving these traits. This
+/// `Clone` and `Copy`, while `Mut` structs are prohibited from deriving these traits. This
 /// exclusion will be handled automatically by the macro.
 ///
 /// ```rust
