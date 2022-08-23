@@ -1,49 +1,8 @@
 //! EnPow is a procedural macro crate used to enpower user defined enums with many methods usually
-//! known from the standard library enums `Result<T, E>` and `Option<T>`. It can generate methods
-//! of the following types:
-//! 
-//! - `Var`
-//!     * `fn <variant>(self) -> Option<<inner>>`
-//!       Return the inner data, if the enum value is of the expected type, otherwise returns
-//!       `None`.
-//! - `IsVar`
-//!     * `fn is_<variant>(&self) -> bool`
-//!       Returns `true`, if the enum value is of the expected type, otherwise returns `false`.
-//!     * `fn is_<variant>_and(&self, f: impl FnOnce(<ref_inner>) -> bool) -> bool`
-//!       Returns `true`, if the enum value is of the expected type and the given closure
-//!       evalutates to `true`, otherwise returns `false`.
-//! - `VarAsRef`
-//!     * `fn <variant>_as_ref(&self) -> Option<<ref_inner>>`
-//!       Returns a reference to the inner data, if the enum value is of the expected type,
-//!       otherwise returns `None`.
-//!     * `fn <variant>_as_mut(&mut self) -> Option<<mut_inner>>`
-//!       Returns a mutable reference to the inner data, if the enum value is of the expected type,
-//!       otherwise returns `None`.
-//! - `UnwrapVar`
-//!     * `fn unwrap_<variant>(self) -> <inner>`
-//!       Returns the inner data, if the enum value is of the expected type, otherwise panics.
-//!     * `fn unwrap_<variant>_as_ref(self) -> <inner>`
-//!       Returns a reference to the inner data, if the enum value is of the expected type,
-//!       otherwise panics.
-//!     * `fn unwrap_<variant>_as_mut(self) -> <inner>`
-//!       Returns a mutable reference to the inner data, if the enum value is of the expected type,
-//!       otherwise panics.
-//!     * `fn unwrap_<variant>_or(self, default: <inner>) -> <inner>`
-//!       Returns the inner data, if the enum value is of the expected type, otherwise returns the
-//!       given default value.
-//!     * `fn unwrap_<variant>_or_else(self, f: impl FnOnce(Self) -> <inner>) -> <inner>`
-//!       Returns the inner data, if the enum value is of the expected type, otherwise returns the
-//!       value that the given closure evaluated to.
-//! - `ExpectVar`
-//!     * `fn expect_<variant>(self, msg: &str) -> <inner>`
-//!       Returns the inner data, if the enum is of the expected type, otherwise panics with the
-//!       given error message.
-//!     * `fn expect_<variant>_as_ref(self, msg: &str) -> <inner>`
-//!       Returns a reference to the inner data, if the enum is of the expected type, otherwise
-//!       panics with the given error message.
-//!     * `fn expect_<variant>_as_mut(self, msg: &str) -> <inner>`
-//!       Returns a mutable reference to the inner data, if the enum is of the expected type,
-//!       otherwise panics with the given error message.
+//! known from the standard library's `Result<T, E>` and `Option<T>`. It can generate methods
+//! like `fn is_<variant>(&self) -> bool` or `fn unwrap_<variant>(self) -> <inner>`, supporting
+//! variants with named or unnamed fields, as well as generics. See the
+//! [macro's documentation](macro@enpow) for details on the specific methods supported.
 //! 
 //! ## Usage Example
 //! 
@@ -184,20 +143,57 @@ mod helper;
 /// variants as known from `Result<T, E>` and `Option<T>`. It supports generics and variants of
 /// every type, with named or unnamed fields or no fields attached. Variants with unnamed fields
 /// get unwrapped into a tuple, while variants with named fields are transformed into an
-/// automatically generated struct named after the enum and variant, `EnumVariant`. The functions
-/// and struct generated inherit the visibility modifier of the target enum.
+/// automatically generated struct named after the enum and variant, i.e. `EnumVariant`. The
+/// functions and struct generated inherit the visibility modifier of the target enum.
 ///
 /// In parethesis, the following arguments to `enpow` can be used to specify which methods to
-/// generate. Without any arguments, all methods will be generated. The method identifier is
-/// generated from the variant name turned into snake case.
+/// generate. Without any arguments, all methods will be generated. The method identifiers are
+/// generated from the variant names turned into snake case.
 ///
 /// - `Var`
+///     * `fn <variant>(self) -> Option<<inner>>`
+///     Return the inner data, if the enum value is of the expected type, otherwise returns
+///     `None`.
 /// - `IsVar`
+///     * `fn is_<variant>(&self) -> bool`
+///     Returns `true`, if the enum value is of the expected type, otherwise returns `false`.
+///     * `fn is_<variant>_and(&self, f: impl FnOnce(<ref_inner>) -> bool) -> bool`
+///     Returns `true`, if the enum value is of the expected type and the given closure
+///     evalutates to `true`, otherwise returns `false`.
 /// - `VarAsRef`
+///     * `fn <variant>_as_ref(&self) -> Option<<ref_inner>>`
+///     Returns a reference to the inner data, if the enum value is of the expected type,
+///     otherwise returns `None`.
+///     * `fn <variant>_as_mut(&mut self) -> Option<<mut_inner>>`
+///     Returns a mutable reference to the inner data, if the enum value is of the expected type,
+///     otherwise returns `None`.
 /// - `UnwrapVar`
+///     * `fn unwrap_<variant>(self) -> <inner>`
+///     Returns the inner data, if the enum value is of the expected type, otherwise panics.
+///     * `fn unwrap_<variant>_as_ref(self) -> <inner>`
+///     Returns a reference to the inner data, if the enum value is of the expected type,
+///     otherwise panics.
+///     * `fn unwrap_<variant>_as_mut(self) -> <inner>`
+///     Returns a mutable reference to the inner data, if the enum value is of the expected type,
+///     otherwise panics.
+///     * `fn unwrap_<variant>_or(self, default: <inner>) -> <inner>`
+///     Returns the inner data, if the enum value is of the expected type, otherwise returns the
+///     given default value.
+///     * `fn unwrap_<variant>_or_else(self, f: impl FnOnce(Self) -> <inner>) -> <inner>`
+///     Returns the inner data, if the enum value is of the expected type, otherwise returns the
+///     value that the given closure evaluated to.
 /// - `ExpectVar`
-/// - `All`
+///     * `fn expect_<variant>(self, msg: &str) -> <inner>`
+///     Returns the inner data, if the enum is of the expected type, otherwise panics with the
+///     given error message.
+///     * `fn expect_<variant>_as_ref(self, msg: &str) -> <inner>`
+///     Returns a reference to the inner data, if the enum is of the expected type, otherwise
+///     panics with the given error message.
+///     * `fn expect_<variant>_as_mut(self, msg: &str) -> <inner>`
+///     Returns a mutable reference to the inner data, if the enum is of the expected type,
+///     otherwise panics with the given error message.
 ///
+/// This example will generate methods of the category `Var` and `IsVar`.
 /// ```rust
 /// # use enpow::enpow;
 /// 
@@ -210,6 +206,7 @@ mod helper;
 /// }
 /// ```
 ///
+/// This example will generate all methods.
 /// ```rust
 /// # use enpow::enpow;
 /// 
@@ -221,9 +218,14 @@ mod helper;
 ///     D { a: u32, b: i32 },
 /// }
 /// ```
+/// 
+/// ## Auto Derive
 ///
 /// Attaching the additional attribute `var_derive()` below `enpow` adds the
-/// specified auto trait derives to the automatically generated structs.
+/// specified auto trait derives to the automatically generated types. `Ref`
+/// structs always automatically derive `Clone` and `Copy`, while `RefMut`
+/// structs are prohibited from deriving these traits. This exclusion will be
+/// handled automatically by the macro.
 ///
 /// ```rust
 /// # use enpow::enpow;
