@@ -2,7 +2,7 @@ mod outer {
     use enpow::enpow;
 
     #[enpow(All)]
-    #[var_derive(Debug, PartialEq)]
+    #[enpow_derive(Debug, PartialEq)]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
         A,

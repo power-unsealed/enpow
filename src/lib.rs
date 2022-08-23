@@ -10,7 +10,7 @@
 //! use enpow::enpow;
 //!
 //! #[enpow(Var, VarAsRef)]
-//! #[var_derive(Debug, PartialEq)]
+//! #[enpow_derive(Debug, PartialEq)]
 //! #[derive(Clone, Debug, PartialEq)]
 //! pub enum Token<Span> {
 //!     Plus(Span),
@@ -219,19 +219,18 @@ mod helper;
 /// }
 /// ```
 /// 
-/// ## Auto Derive
+/// ## Auto Derives
 ///
-/// Attaching the additional attribute `var_derive()` below `enpow` adds the
-/// specified auto trait derives to the automatically generated types. `Ref`
-/// structs always automatically derive `Clone` and `Copy`, while `RefMut`
-/// structs are prohibited from deriving these traits. This exclusion will be
-/// handled automatically by the macro.
+/// Attaching the additional attribute `enpow_derive()` __below__ `enpow` adds the specified auto
+/// trait derives to the automatically generated types. `Ref` structs always automatically derive
+/// `Clone` and `Copy`, while `RefMut` structs are prohibited from deriving these traits. This
+/// exclusion will be handled automatically by the macro.
 ///
 /// ```rust
 /// # use enpow::enpow;
 /// 
 /// #[enpow]
-/// #[var_derive(Clone, Debug, PartialEq)]
+/// #[enpow_derive(Clone, Debug, PartialEq)]
 /// enum Test {
 ///     C(u32, i32),
 ///     D { a: u32, b: i32 },
@@ -299,13 +298,13 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
         }
     }
 
-    // Check for every attached attribute `var_derive`
+    // Check for every attached attribute `enpow_derive`
     let mut self_derives = Vec::new();
     let mut attr_removed = 0;
     for (i, attr) in parent.attributes.iter().enumerate() {
         let ident = attr.path.get_ident();
         if ident
-            .map(|i| i.to_string() == "var_derive")
+            .map(|i| i.to_string() == "enpow_derive")
             .unwrap_or(false)
         {
             // Get the derive Traits
@@ -380,7 +379,7 @@ mod tests {
 
     #[test]
     fn enpow() {
-        let source = "#[var_derive(Debug, PartialEq)]
+        let source = "#[enpow_derive(Debug, PartialEq)]
             #[derive(Clone, Debug, PartialEq)]
             pub enum Token<Span> {
                 Plus(Span),
