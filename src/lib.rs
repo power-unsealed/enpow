@@ -235,6 +235,9 @@ mod helper;
 ///     C(u32, i32),
 ///     D { a: u32, b: i32 },
 /// }
+/// 
+/// // Using PartialEq and Debug
+/// assert_eq!(Test::D { a: 7, b: -7 }.unwrap_d(), TestD { a: 7, b: -7 });
 /// ```
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]
