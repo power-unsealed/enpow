@@ -165,7 +165,15 @@ impl ExtractEnumInfo for DeriveInput {
     }
 }
 
+pub enum VariantType {
+    Unit,
+    Field,
+    Unnamed, 
+    Named,
+}
+
 pub struct VariantInfo {
+    pub var_type: VariantType,
     pub identifier: Ident,
     pub snake_case: String,
     /// Data type of variant data in self, ref, and mut version
@@ -183,6 +191,7 @@ pub struct VariantInfo {
 
 impl VariantInfo {
     pub fn new(
+        var_type: VariantType,
         data_type: (TokenStream, TokenStream, TokenStream),
         type_def: (
             Option<TokenStream>,
@@ -194,6 +203,7 @@ impl VariantInfo {
         identifier: Ident,
     ) -> VariantInfo {
         VariantInfo {
+            var_type,
             snake_case: identifier.to_string().to_snake_case(),
             identifier,
             data_type,
@@ -207,6 +217,7 @@ impl VariantInfo {
         let enum_ident = &parent.identifier;
 
         Ok(VariantInfo::new(
+            VariantType::Unit,
             (quote! { () }, quote! { () }, quote! { () }),
             (None, None, None),
             quote! { #enum_ident::#identifier },
@@ -224,6 +235,7 @@ impl VariantInfo {
 
         let single = &field.ty;
         Ok(VariantInfo::new(
+            VariantType::Field,
             (
                 quote! { #single },
                 quote! { & #single },
@@ -263,6 +275,7 @@ impl VariantInfo {
         }
 
         Ok(VariantInfo::new(
+            VariantType::Unnamed,
             (
                 quote! { #tuple },
                 quote! { #ref_tuple },
@@ -339,6 +352,7 @@ impl VariantInfo {
         let mut_constr = quote! { #mut_ident #constructor };
 
         Ok(VariantInfo::new(
+            VariantType::Named,
             (self_type, ref_type, mut_type),
             (Some(self_def), Some(ref_def), Some(mut_def)),
             quote! { #enum_ident::#identifier #constructor },
