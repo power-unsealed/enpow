@@ -149,7 +149,7 @@ impl ExtractEnumInfo for DeriveInput {
             _ => {
                 return Err(Error::new(
                     Span::call_site(),
-                    "Can only be derived for enums",
+                    "Can only be applied to enums",
                 ));
             }
         };
