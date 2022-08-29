@@ -132,6 +132,7 @@
 //! ```
 
 mod enpow;
+mod extract;
 mod helper;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,6 +243,18 @@ pub fn enpow(
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     match enpow::entry(attribute.into(), item.into()) {
+        Ok(stream) => stream,
+        Err(error) => error.to_compile_error(),
+    }
+    .into()
+}
+
+#[proc_macro_attribute]
+pub fn extract(
+    attribute: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    match extract::entry(attribute.into(), item.into()) {
         Ok(stream) => stream,
         Err(error) => error.to_compile_error(),
     }
