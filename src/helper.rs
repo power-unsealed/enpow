@@ -1,10 +1,10 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
 use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
     Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed, FieldsUnnamed,
-    GenericParam, Generics, Ident, Lifetime, LifetimeDef, Path, Token, Variant, Visibility,
+    GenericParam, Generics, Ident, Lifetime, LifetimeDef, Path, Token, Variant, Visibility, token::{Struct, Where}, TypePath, visit::Visit, ItemStruct, WherePredicate, TypeParam,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -720,13 +720,274 @@ impl<T: AsRef<str>> SnakeCase for T {
     }
 }
 
+struct UsageMonitor {
+    lifetimes: HashSet<String>,
+    type_paths: HashSet<String>,
+}
+
+impl UsageMonitor {
+    fn inspect_struct(input: &ItemStruct) -> Self {
+        let mut monitor = UsageMonitor {
+            lifetimes: HashSet::new(),
+            type_paths: HashSet::new(),
+        };
+        monitor.visit_item_struct(&input);
+        monitor
+    }
+
+    fn inspect_lt_def(input: &LifetimeDef) -> Self {
+        let mut monitor = UsageMonitor {
+            lifetimes: HashSet::new(),
+            type_paths: HashSet::new(),
+        };
+        monitor.visit_lifetime_def(&input);
+        monitor
+    }
+
+    fn inspect_type_param(input: &TypeParam) -> Self {
+        let mut monitor = UsageMonitor {
+            lifetimes: HashSet::new(),
+            type_paths: HashSet::new(),
+        };
+        monitor.visit_type_param(&input);
+        monitor
+    }
+
+    fn inspect_where_pred(input: &WherePredicate) -> Self {
+        let mut monitor = UsageMonitor {
+            lifetimes: HashSet::new(),
+            type_paths: HashSet::new(),
+        };
+        monitor.visit_where_predicate(&input);
+        monitor
+    }
+}
+
+impl<'ast> Visit<'ast> for UsageMonitor {
+    fn visit_lifetime(&mut self, lt: &'ast Lifetime) {
+        self.lifetimes.insert(lt.to_string());
+
+        syn::visit::visit_lifetime(self, lt)
+    }
+
+    fn visit_type_path(&mut self, tp: &'ast TypePath) {
+        self.type_paths.insert(tp.to_token_stream().to_string());
+
+        syn::visit::visit_type_path(self, tp)
+    }
+}
+
+pub trait StructGenericsUsage {
+    fn filter_unused_generics(&self, generics: &Generics) -> Result<Generics, Error>;
+}
+
+impl StructGenericsUsage for ItemStruct {
+    fn filter_unused_generics(&self, generics: &Generics) -> Result<Generics, Error> {
+        // Extract the generics
+        let mut ltdefs: Vec<_> = generics.lifetimes().into_iter().cloned().collect();
+        let mut tparams: Vec<_> = generics.type_params().into_iter().cloned().collect();
+        let mut preds: Option<Vec<_>> = generics.where_clause.as_ref()
+            .map(|w| w.predicates.iter().collect());
+
+        // Get the string representation of every generic
+        let lifetimes: HashSet<_> = ltdefs.iter()
+            .map(|ltdef| ltdef.lifetime.to_string())
+            .collect();
+        let type_idents: HashSet<_> = tparams.iter()
+            .map(|tparam| tparam.ident.to_string())
+            .collect();
+        
+        // Find all lifetimes and type paths used in the given struct
+        let used = UsageMonitor::inspect_struct(self);
+
+        // Find the unused generics
+        let mut unused_lifetimes: Vec<_> = lifetimes.difference(&used.lifetimes).collect();
+        let mut unused_tparams: Vec<_> = type_idents.difference(&used.type_paths).collect();
+
+        // Again, go through the generics to find indirect usages
+        let mut rem_unused_lifetimes = Vec::new();
+        for (i, lt) in unused_lifetimes.iter().enumerate() {
+            let mut used = false;
+
+            // Check all lifetime defs
+            for ltdef in ltdefs.iter() {
+                if &ltdef.lifetime.to_string() != *lt {
+                    let usage = UsageMonitor::inspect_lt_def(ltdef);
+                    if usage.lifetimes.contains(*lt) {
+                        used = true;
+                        break;
+                    }
+                }
+            }
+
+            // Check all type params
+            for tparam in tparams.iter() {
+                let usage = UsageMonitor::inspect_type_param(tparam);
+                if usage.lifetimes.contains(*lt) {
+                    used = true;
+                    break;
+                }
+            }
+
+            // Finally, check the predicates
+            if let Some(preds) = &preds {
+                for pred in preds.iter() {
+                    if let WherePredicate::Lifetime(llt) = pred {
+                        if &llt.lifetime.to_string() == *lt {
+                            continue;
+                        }
+                    }
+                    let usage = UsageMonitor::inspect_where_pred(pred);
+                    if usage.lifetimes.contains(*lt) {
+                        used = true;
+                        break;
+                    }
+                }
+            }
+
+            // If the lifetime is used in other generics, mark it for removal from the unused list
+            if used {
+                rem_unused_lifetimes.push(i);
+            }
+        }
+
+        let mut rem_unused_tparams = Vec::new();
+        for (i, tp) in unused_tparams.iter().enumerate() {
+            let mut used = false;
+
+            // Check all lifetime defs
+            for ltdef in ltdefs.iter() {
+                let usage = UsageMonitor::inspect_lt_def(ltdef);
+                if usage.type_paths.contains(*tp) {
+                    used = true;
+                    break;
+                }
+            }
+
+            // Check all type params
+            for tparam in tparams.iter() {
+                if &tparam.ident.to_string() != *tp {
+                    let usage = UsageMonitor::inspect_type_param(tparam);
+                    if usage.type_paths.contains(*tp) {
+                        used = true;
+                        break;
+                    }
+                }
+            }
+
+            // Finally, check the predicates
+            if let Some(preds) = &preds {
+                for pred in preds.iter() {
+                    if let WherePredicate::Type(ttp) = pred {
+                        if &ttp.bounded_ty.to_token_stream().to_string() == *tp {
+                            continue;
+                        }
+                    }
+                    let usage = UsageMonitor::inspect_where_pred(pred);
+                    if usage.type_paths.contains(*tp) {
+                        used = true;
+                        break;
+                    }
+                }
+            }
+
+            // If the tparam is used in other generics, mark it for removal from the unused list
+            if used {
+                rem_unused_tparams.push(i);
+            }
+        }
+
+        // Clean the unused lists
+        for (ith, remove) in rem_unused_lifetimes.into_iter().enumerate() {
+            unused_lifetimes.remove(remove - ith);
+        }
+        for (ith, remove) in rem_unused_tparams.into_iter().enumerate() {
+            unused_tparams.remove(remove - ith);
+        }
+
+        // Remove unused lifetimes
+        for lt in unused_lifetimes {
+            // Remove the unused lifetime from the definition
+            let index = ltdefs.iter()
+                .position(|ltdef| &ltdef.lifetime.to_string() == lt)
+                .unwrap();
+            ltdefs.remove(index);
+
+            // Look in the where clause predicates if there is a match to remove
+            if let Some(preds) = &mut preds {
+                let index = preds.iter()
+                    .position(|pred| {
+                        if let WherePredicate::Lifetime(ltpred) = pred {
+                            &ltpred.lifetime.to_string() == lt
+                        } else {
+                            false
+                        }
+                    });
+                if let Some(index) = index {
+                    preds.remove(index);
+                }
+            }
+        }
+
+        // Remove unused type params
+        for tp in unused_tparams {
+            // Remove the unused type param from the definition
+            let index = tparams.iter()
+                .position(|tparam| {
+                    &tparam.to_token_stream().to_string() == tp
+                })
+                .unwrap();
+            tparams.remove(index);
+
+            // Look in the where clause predicates if there is a match to remove
+            if let Some(preds) = &mut preds {
+                let index = preds.iter()
+                    .position(|pred| {
+                        match pred {
+                            WherePredicate::Type(tpred) => {
+                                &tpred.bounded_ty.to_token_stream().to_string() == tp
+                            }
+                            WherePredicate::Eq(eqpred) => {
+                                &eqpred.lhs_ty.to_token_stream().to_string() == tp
+                            }
+                            _ => false,
+                        }
+                    });
+                if let Some(index) = index {
+                    preds.remove(index);
+                }
+            }
+        }
+
+        // Build the new generics
+        let inbetween = if ltdefs.is_empty() || tparams.is_empty() {
+            quote!{ }
+        } else {
+            quote!{ , }
+        };
+        let tokens = match preds {
+            Some(preds) if !preds.is_empty() => {
+                quote! { struct T< #(#ltdefs),* #inbetween #(#tparams),* > where #(#preds),*; }
+            }
+            _ => {
+                quote! { struct T< #(#ltdefs),* #inbetween #(#tparams),* >; }
+            }
+        };
+        let ast: ItemStruct = syn::parse2(tokens)?;
+        Ok(ast.generics)
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Tests
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use crate::helper::SnakeCase;
+    use crate::helper::{SnakeCase, StructGenericsUsage};
+    use quote::{quote, ToTokens};
+    use syn::ItemStruct;
+
 
     #[test]
     fn to_snake_case() {
@@ -734,5 +995,21 @@ mod tests {
         assert_eq!("TCP".to_snake_case(), "tcp");
         assert_eq!("snake_case".to_snake_case(), "snake_case");
         assert_eq!("HOME_IP".to_snake_case(), "home_ip");
+    }
+
+    #[test]
+    fn struct_generic_usage() {
+        let tokens = quote! {
+            struct Test<'a, 'b, T, I: 'b + ToString> where T: Iterator<Item=I> {
+                field: I,
+            }
+        };
+        let mut ast: ItemStruct = syn::parse2(tokens).unwrap();
+        let generics = std::mem::take(&mut ast.generics);
+
+        ast.generics = ast.filter_unused_generics(&generics).unwrap();
+
+        let result = ast.to_token_stream().to_string();
+        assert_eq!(result, "struct Test < 'b , I : 'b + ToString > { field : I , }");
     }
 }
