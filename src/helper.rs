@@ -312,6 +312,11 @@ impl VariantInfo {
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: #t })
             .collect();
+        let without_gen = quote! {
+            #visibility struct #type_ident { #(#fields),* }
+        };
+        let generics = syn::parse2::<ItemStruct>(without_gen)?
+            .filter_unused_generics(generics)?;
         let self_def = quote! {
             #visibility struct #type_ident #generics #gen_where { #(#fields),* }
         };
@@ -333,6 +338,11 @@ impl VariantInfo {
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: &#lifetime #t })
             .collect();
+        let without_gen = quote! {
+            #visibility struct #ref_ident { #(#ref_fields),* }
+        };
+        let ref_generics = syn::parse2::<ItemStruct>(without_gen)?
+            .filter_unused_generics(&ref_generics)?;
         let ref_def = quote! {
             #visibility struct #ref_ident #ref_generics #gen_where { #(#ref_fields),* }
         };
@@ -934,7 +944,7 @@ impl StructGenericsUsage for ItemStruct {
             // Remove the unused type param from the definition
             let index = tparams.iter()
                 .position(|tparam| {
-                    &tparam.to_token_stream().to_string() == tp
+                    &tparam.ident.to_token_stream().to_string() == tp
                 })
                 .unwrap();
             tparams.remove(index);
