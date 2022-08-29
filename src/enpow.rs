@@ -135,7 +135,7 @@ mod tests {
     fn enpow() {
         let source = "#[enpow_derive(Debug, PartialEq)]
             #[derive(Clone, Debug, PartialEq)]
-            pub enum Token<Span> {
+            pub enum Token<'a, Span> {
                 Plus(Span),
                 Minus(Span),
                 Number {
