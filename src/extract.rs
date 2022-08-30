@@ -1,4 +1,4 @@
-use crate::helper::{ExtractEnumInfo, ExtractVariantInfo, VarDeriveAttributeInfo, VariantType, StructGenericsUsage};
+use crate::helper::{ExtractEnumInfo, ExtractVariantInfo, VarDeriveAttributeInfo, VariantType, GenericsFilter};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, format_ident};
 use syn::{DeriveInput, Error, Data, Fields, TypeTuple, ItemStruct};
@@ -42,8 +42,8 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
                 let without_gen = quote! {
                     #visibility struct #type_ident ( pub #single );
                 };
-                let generics = syn::parse2::<ItemStruct>(without_gen)?
-                    .filter_unused_generics(generics)?;
+                let ast = syn::parse2::<ItemStruct>(without_gen)?;
+                let generics = generics.filter_unused(&ast)?;
                 let (gen_main, gen_short, gen_where) = generics.split_for_impl();
 
                 (
@@ -59,8 +59,8 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
                 let without_gen = quote! {
                     #visibility struct #type_ident ( #(pub #fields),* );
                 };
-                let generics = syn::parse2::<ItemStruct>(without_gen)?
-                    .filter_unused_generics(generics)?;
+                let ast = syn::parse2::<ItemStruct>(without_gen)?;
+                let generics = generics.filter_unused(&ast)?;
                 let (gen_main, gen_short, gen_where) = generics.split_for_impl();
 
                 (

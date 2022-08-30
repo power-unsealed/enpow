@@ -302,53 +302,52 @@ impl VariantInfo {
             .unzip();
         let constructor = quote! { { #(#field_idents),* } };
 
-        // Self struct
+        // Prepare self struct
         let type_ident = format_ident!("{enum_ident}{identifier}");
         let fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: #t })
             .collect();
+
+        // Build the struct without generics definition to find out which generics are actually
+        // used
         let without_gen = quote! {
             #visibility struct #type_ident { #(#fields),* }
         };
-        let generics = syn::parse2::<ItemStruct>(without_gen)?
-            .filter_unused_generics(&parent.generics)?;
+        let ast = syn::parse2::<ItemStruct>(without_gen)?;
+        let mut generics = parent.generics.filter_unused(&ast)?;
         let (_, gen_short, gen_where) = generics.split_for_impl();
+
+        // Build self struct
         let self_type = quote! { #type_ident #gen_short };
         let self_def = quote! {
             #visibility struct #type_ident #generics #gen_where { #(#fields),* }
         };
         let data_constr = quote! { #type_ident #constructor };
 
-        // Build unfiltered generics for ref and mut
+        // Build unfiltered generics for ref and mut with additional lifetime for the refs
         let lifetime_name = format!("'{}", type_ident.to_string().to_snake_case());
         let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
         let mut gen_params = generics.params.clone();
         gen_params.push(GenericParam::Lifetime(LifetimeDef::new(lifetime.clone())));
-        let mut ref_generics = generics.clone();
-        ref_generics.params = gen_params;
+        generics.params = gen_params;
+        let (_, gen_short, gen_where) = generics.split_for_impl();
 
-        // Ref struct
+        // Build ref struct
         let ref_ident = format_ident!("{type_ident}Ref");
         let ref_fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: &#lifetime #t })
             .collect();
-        let without_gen = quote! {
-            #visibility struct #ref_ident { #(#ref_fields),* }
-        };
-        let ref_generics = syn::parse2::<ItemStruct>(without_gen)?
-            .filter_unused_generics(&ref_generics)?;
-        let (_, gen_short, gen_where) = ref_generics.split_for_impl();
         let ref_type = quote! { #ref_ident #gen_short };
         let ref_def = quote! {
-            #visibility struct #ref_ident #ref_generics #gen_where { #(#ref_fields),* }
+            #visibility struct #ref_ident #generics #gen_where { #(#ref_fields),* }
         };
         let ref_constr = quote! { #ref_ident #constructor };
 
-        // Mut struct
+        // Build mut struct
         let mut_ident = format_ident!("{type_ident}Mut");
         let mut_fields: Vec<_> = field_idents
             .iter()
@@ -357,7 +356,7 @@ impl VariantInfo {
             .collect();
         let mut_type = quote! { #mut_ident #gen_short };
         let mut_def = quote! {
-            #visibility struct #mut_ident #ref_generics #gen_where { #(#mut_fields),* }
+            #visibility struct #mut_ident #generics #gen_where { #(#mut_fields),* }
         };
         let mut_constr = quote! { #mut_ident #constructor };
 
@@ -787,16 +786,44 @@ impl<'ast> Visit<'ast> for UsageMonitor {
     }
 }
 
-pub trait StructGenericsUsage {
-    fn filter_unused_generics(&self, generics: &Generics) -> Result<Generics, Error>;
+trait UsageMonitorAdapter {
+    fn inspect(&self) -> UsageMonitor;
 }
 
-impl StructGenericsUsage for ItemStruct {
-    fn filter_unused_generics(&self, generics: &Generics) -> Result<Generics, Error> {
+impl UsageMonitorAdapter for ItemStruct {
+    fn inspect(&self) -> UsageMonitor {
+        UsageMonitor::inspect_struct(self)
+    }
+}
+
+impl UsageMonitorAdapter for LifetimeDef {
+    fn inspect(&self) -> UsageMonitor {
+        UsageMonitor::inspect_lt_def(self)
+    }
+}
+
+impl UsageMonitorAdapter for TypeParam {
+    fn inspect(&self) -> UsageMonitor {
+        UsageMonitor::inspect_type_param(self)
+    }
+}
+
+impl UsageMonitorAdapter for WherePredicate {
+    fn inspect(&self) -> UsageMonitor {
+        UsageMonitor::inspect_where_pred(self)
+    }
+}
+
+pub trait GenericsFilter {
+    fn filter_unused(&self, ast: &impl UsageMonitorAdapter) -> Result<Generics, Error>;
+}
+
+impl GenericsFilter for Generics {
+    fn filter_unused(&self, ast: &impl UsageMonitorAdapter) -> Result<Generics, Error> {
         // Extract the generics
-        let mut ltdefs: Vec<_> = generics.lifetimes().into_iter().cloned().collect();
-        let mut tparams: Vec<_> = generics.type_params().into_iter().cloned().collect();
-        let mut preds: Option<Vec<_>> = generics.where_clause.as_ref()
+        let mut ltdefs: Vec<_> = self.lifetimes().into_iter().cloned().collect();
+        let mut tparams: Vec<_> = self.type_params().into_iter().cloned().collect();
+        let mut preds: Option<Vec<_>> = self.where_clause.as_ref()
             .map(|w| w.predicates.iter().collect());
 
         // Get the string representation of every generic
@@ -807,8 +834,8 @@ impl StructGenericsUsage for ItemStruct {
             .map(|tparam| tparam.ident.to_string())
             .collect();
         
-        // Find all lifetimes and type paths used in the given struct
-        let used = UsageMonitor::inspect_struct(self);
+        // Find all lifetimes and type paths used in the given ast
+        let used = ast.inspect();
 
         // Find the unused generics
         let mut unused_lifetimes: Vec<_> = lifetimes.difference(&used.lifetimes).collect();
@@ -994,7 +1021,7 @@ impl StructGenericsUsage for ItemStruct {
 
 #[cfg(test)]
 mod tests {
-    use crate::helper::{SnakeCase, StructGenericsUsage};
+    use crate::helper::{SnakeCase, GenericsFilter};
     use quote::{quote, ToTokens};
     use syn::ItemStruct;
 
@@ -1016,8 +1043,7 @@ mod tests {
         };
         let mut ast: ItemStruct = syn::parse2(tokens).unwrap();
         let generics = std::mem::take(&mut ast.generics);
-
-        ast.generics = ast.filter_unused_generics(&generics).unwrap();
+        ast.generics = generics.filter_unused(&ast).unwrap();
 
         let result = ast.to_token_stream().to_string();
         assert_eq!(result, "struct Test < 'b , I : 'b + ToString > { field : I , }");
