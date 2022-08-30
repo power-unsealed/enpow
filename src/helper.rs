@@ -328,21 +328,26 @@ impl VariantInfo {
         let ast = syn::parse2::<ItemStruct>(without_gen)?;
         let mut generics = parent.generics.filter_unused(&ast)?;
         let (_, gen_short, gen_where) = generics.split_for_impl();
+        let gen_short = gen_short.to_token_stream();
+        let gen_where = gen_where.map(|w| w.to_token_stream());
 
         // Build self struct
         let self_type = quote! { #type_ident #gen_short };
         let self_def = quote! {
-            #visibility struct #type_ident #generics #gen_where { #(#fields),* }
+            #(#docs)* #visibility struct #type_ident #generics #gen_where { #(#fields),* }
         };
         let data_constr = quote! { #type_ident #constructor };
 
-        // Build unfiltered generics for ref and mut with additional lifetime for the refs
+        // Build generics for ref and mut with additional lifetime for the refs
         let lifetime_name = format!("'{}", type_ident.to_string().to_snake_case());
         let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
         let mut gen_params = generics.params.clone();
         gen_params.push(GenericParam::Lifetime(LifetimeDef::new(lifetime.clone())));
         generics.params = gen_params;
-        let (_, gen_short, gen_where) = generics.split_for_impl();
+        // We do NOT regenerate the short and where clause, since we just added a lifetime. If we
+        // leave it out, the compiler will infer it. If we take it in, we have to sprinkle it
+        // everywhere...
+        //let (_, gen_short, gen_where) = generics.split_for_impl();
 
         // Build ref struct
         let ref_ident = format_ident!("{type_ident}Ref");
@@ -353,7 +358,7 @@ impl VariantInfo {
             .collect();
         let ref_type = quote! { #ref_ident #gen_short };
         let ref_def = quote! {
-            #visibility struct #ref_ident #generics #gen_where { #(#ref_fields),* }
+            #(#docs)* #visibility struct #ref_ident #generics #gen_where { #(#ref_fields),* }
         };
         let ref_constr = quote! { #ref_ident #constructor };
 
@@ -366,7 +371,7 @@ impl VariantInfo {
             .collect();
         let mut_type = quote! { #mut_ident #gen_short };
         let mut_def = quote! {
-            #visibility struct #mut_ident #generics #gen_where { #(#mut_fields),* }
+            #(#docs)* #visibility struct #mut_ident #generics #gen_where { #(#mut_fields),* }
         };
         let mut_constr = quote! { #mut_ident #constructor };
 

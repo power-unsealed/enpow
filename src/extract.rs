@@ -30,10 +30,11 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
         // For each variant, build the data type and type definition
         let identifier = &variant.identifier;
         let type_ident = format_ident!("{enum_ident}{identifier}");
+        let docs = &variant.docs;
         let (data_type, type_def) = match variant.var_type {
             VariantType::Unit => (
                 quote! { #type_ident },
-                quote! { #visibility struct #type_ident; },
+                quote! { #(#docs)* #visibility struct #type_ident; },
             ),
             VariantType::Field => {
                 let single = variant.data_type.0;
@@ -48,7 +49,10 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
 
                 (
                     quote! { #type_ident #gen_short },
-                    quote! { #visibility struct #type_ident #gen_main ( pub #single ) #gen_where; },
+                    quote! {
+                        #(#docs)*
+                        #visibility struct #type_ident #gen_main ( pub #single ) #gen_where;
+                    },
                 )
             }
             VariantType::Unnamed => {
@@ -66,6 +70,7 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
                 (
                     quote! { #type_ident #gen_short },
                     quote! {
+                        #(#docs)*
                         #visibility struct #type_ident #gen_main ( #(pub #fields),* ) #gen_where;
                     },
                 )
@@ -137,10 +142,19 @@ mod tests {
         #[extract_derive(Debug, PartialEq)]
         #[derive(Debug, PartialEq)]
         pub enum Inner<T, S: ToString> {
+            /// Doc for `A`
             A,
+            /// Doc for `B`
             B(T),
+            /// Doc for `C`
             C(T, S),
-            D { a: T, b: S },
+            /// Doc for `D`
+            D {
+                /// Doc for `D.a`
+                a: T,
+                /// Doc for `D.b`
+                b: S
+            },
         }";
         let input = TokenStream::from_str(source).unwrap();
         let result = super::generate(input).unwrap();
