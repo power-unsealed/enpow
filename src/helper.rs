@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
     Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed, FieldsUnnamed,
-    GenericParam, Generics, Ident, Lifetime, LifetimeDef, Path, Token, Variant, Visibility, token::{Struct, Where}, TypePath, visit::Visit, ItemStruct, WherePredicate, TypeParam,
+    GenericParam, Generics, Ident, Lifetime, LifetimeDef, Path, Token, Variant, Visibility, TypePath, visit::Visit, ItemStruct, WherePredicate, TypeParam,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -729,13 +729,13 @@ impl<T: AsRef<str>> SnakeCase for T {
     }
 }
 
-struct UsageMonitor {
-    lifetimes: HashSet<String>,
-    type_paths: HashSet<String>,
+pub struct UsageMonitor {
+    pub lifetimes: HashSet<String>,
+    pub type_paths: HashSet<String>,
 }
 
 impl UsageMonitor {
-    fn inspect_struct(input: &ItemStruct) -> Self {
+    pub fn inspect_struct(input: &ItemStruct) -> Self {
         let mut monitor = UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
@@ -744,7 +744,7 @@ impl UsageMonitor {
         monitor
     }
 
-    fn inspect_lt_def(input: &LifetimeDef) -> Self {
+    pub fn inspect_lt_def(input: &LifetimeDef) -> Self {
         let mut monitor = UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
@@ -753,7 +753,7 @@ impl UsageMonitor {
         monitor
     }
 
-    fn inspect_type_param(input: &TypeParam) -> Self {
+    pub fn inspect_type_param(input: &TypeParam) -> Self {
         let mut monitor = UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
@@ -762,7 +762,7 @@ impl UsageMonitor {
         monitor
     }
 
-    fn inspect_where_pred(input: &WherePredicate) -> Self {
+    pub fn inspect_where_pred(input: &WherePredicate) -> Self {
         let mut monitor = UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
@@ -786,7 +786,7 @@ impl<'ast> Visit<'ast> for UsageMonitor {
     }
 }
 
-trait UsageMonitorAdapter {
+pub trait UsageMonitorAdapter {
     fn inspect(&self) -> UsageMonitor;
 }
 
