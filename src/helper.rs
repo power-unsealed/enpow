@@ -177,6 +177,7 @@ pub struct VariantInfo {
     pub var_type: VariantType,
     pub identifier: Ident,
     pub snake_case: String,
+    pub docs: Vec<Attribute>,
     /// Data type of variant data in self, ref, and mut version
     pub data_type: (TokenStream, TokenStream, TokenStream),
     /// Type definition of variant data in self, ref, and mut version
@@ -202,11 +203,13 @@ impl VariantInfo {
         pattern: TokenStream,
         construction: (TokenStream, TokenStream, TokenStream),
         identifier: Ident,
+        docs: Vec<Attribute>,
     ) -> VariantInfo {
         VariantInfo {
             var_type,
             snake_case: identifier.to_string().to_snake_case(),
             identifier,
+            docs,
             data_type,
             type_def,
             pattern,
@@ -214,7 +217,7 @@ impl VariantInfo {
         }
     }
 
-    pub fn from_unit(identifier: Ident, parent: &EnumInfo) -> Result<VariantInfo, Error> {
+    pub fn from_unit(identifier: Ident, docs: Vec<Attribute>, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
 
         Ok(VariantInfo::new(
@@ -224,17 +227,19 @@ impl VariantInfo {
             quote! { #enum_ident::#identifier },
             (quote! { () }, quote! { () }, quote! { () }),
             identifier,
+            docs,
         ))
     }
 
     pub fn from_field(
         identifier: Ident,
         field: Field,
+        docs: Vec<Attribute>,
         parent: &EnumInfo,
     ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
-
         let single = &field.ty;
+
         Ok(VariantInfo::new(
             VariantType::Field,
             (
@@ -246,12 +251,14 @@ impl VariantInfo {
             quote! { #enum_ident::#identifier( f0 ) },
             (quote! { f0 }, quote! { f0 }, quote! { f0 }),
             identifier,
+            docs,
         ))
     }
 
     pub fn from_unnamed(
         identifier: Ident,
         tuple: FieldsUnnamed,
+        docs: Vec<Attribute>,
         parent: &EnumInfo,
     ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
@@ -286,12 +293,14 @@ impl VariantInfo {
             quote! { #enum_ident::#identifier #construction },
             (construction.clone(), construction.clone(), construction),
             identifier,
+            docs,
         ))
     }
 
     pub fn from_named(
         identifier: Ident,
         fields: FieldsNamed,
+        docs: Vec<Attribute>,
         parent: &EnumInfo,
     ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
@@ -368,6 +377,7 @@ impl VariantInfo {
             quote! { #enum_ident::#identifier #constructor },
             (data_constr, ref_constr, mut_constr),
             identifier,
+            docs,
         ))
     }
 
@@ -671,22 +681,32 @@ impl ExtractVariantInfo for Variant {
     fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let identifier = self.ident;
 
+        // Get all doc comments
+        let docs: Vec<_> = self.attrs.into_iter()
+            .filter(|attr| {
+                match attr.path.get_ident() {
+                    Some(ident) => ident.to_string() == "doc",
+                    None => false,
+                }
+            })
+            .collect();
+
         match self.fields {
             // Variant without data
-            Fields::Unit => VariantInfo::from_unit(identifier, parent),
+            Fields::Unit => VariantInfo::from_unit(identifier, docs, parent),
 
             // Variant with unnamed fields
             Fields::Unnamed(tuple) => {
                 if tuple.unnamed.len() == 1 {
                     let field = tuple.unnamed[0].clone();
-                    VariantInfo::from_field(identifier, field, parent)
+                    VariantInfo::from_field(identifier, field, docs, parent)
                 } else {
-                    VariantInfo::from_unnamed(identifier, tuple, parent)
+                    VariantInfo::from_unnamed(identifier, tuple, docs, parent)
                 }
             }
 
             // Variant with named fields
-            Fields::Named(fields) => VariantInfo::from_named(identifier, fields, parent),
+            Fields::Named(fields) => VariantInfo::from_named(identifier, fields, docs, parent),
         }
     }
 }
