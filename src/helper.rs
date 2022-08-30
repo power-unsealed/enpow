@@ -3,8 +3,9 @@ use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
 use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
-    Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed, FieldsUnnamed,
-    GenericParam, Generics, Ident, Lifetime, LifetimeDef, Path, Token, Variant, Visibility, TypePath, visit::Visit, ItemStruct, WherePredicate, TypeParam,
+    visit::Visit, Attribute, Data, DataEnum, DeriveInput, Error, Field, Fields, FieldsNamed,
+    FieldsUnnamed, GenericParam, Generics, Ident, ItemStruct, Lifetime, LifetimeDef, Path, Token,
+    TypeParam, TypePath, Variant, Visibility, WherePredicate,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -168,7 +169,7 @@ impl ExtractEnumInfo for DeriveInput {
 pub enum VariantType {
     Unit,
     Field,
-    Unnamed, 
+    Unnamed,
     Named,
 }
 
@@ -823,17 +824,21 @@ impl GenericsFilter for Generics {
         // Extract the generics
         let mut ltdefs: Vec<_> = self.lifetimes().into_iter().cloned().collect();
         let mut tparams: Vec<_> = self.type_params().into_iter().cloned().collect();
-        let mut preds: Option<Vec<_>> = self.where_clause.as_ref()
+        let mut preds: Option<Vec<_>> = self
+            .where_clause
+            .as_ref()
             .map(|w| w.predicates.iter().collect());
 
         // Get the string representation of every generic
-        let lifetimes: HashSet<_> = ltdefs.iter()
+        let lifetimes: HashSet<_> = ltdefs
+            .iter()
             .map(|ltdef| ltdef.lifetime.to_string())
             .collect();
-        let type_idents: HashSet<_> = tparams.iter()
+        let type_idents: HashSet<_> = tparams
+            .iter()
             .map(|tparam| tparam.ident.to_string())
             .collect();
-        
+
         // Find all lifetimes and type paths used in the given ast
         let used = ast.inspect();
 
@@ -945,21 +950,21 @@ impl GenericsFilter for Generics {
         // Remove unused lifetimes
         for lt in unused_lifetimes {
             // Remove the unused lifetime from the definition
-            let index = ltdefs.iter()
+            let index = ltdefs
+                .iter()
                 .position(|ltdef| &ltdef.lifetime.to_string() == lt)
                 .unwrap();
             ltdefs.remove(index);
 
             // Look in the where clause predicates if there is a match to remove
             if let Some(preds) = &mut preds {
-                let index = preds.iter()
-                    .position(|pred| {
-                        if let WherePredicate::Lifetime(ltpred) = pred {
-                            &ltpred.lifetime.to_string() == lt
-                        } else {
-                            false
-                        }
-                    });
+                let index = preds.iter().position(|pred| {
+                    if let WherePredicate::Lifetime(ltpred) = pred {
+                        &ltpred.lifetime.to_string() == lt
+                    } else {
+                        false
+                    }
+                });
                 if let Some(index) = index {
                     preds.remove(index);
                 }
@@ -969,27 +974,23 @@ impl GenericsFilter for Generics {
         // Remove unused type params
         for tp in unused_tparams {
             // Remove the unused type param from the definition
-            let index = tparams.iter()
-                .position(|tparam| {
-                    &tparam.ident.to_token_stream().to_string() == tp
-                })
+            let index = tparams
+                .iter()
+                .position(|tparam| &tparam.ident.to_token_stream().to_string() == tp)
                 .unwrap();
             tparams.remove(index);
 
             // Look in the where clause predicates if there is a match to remove
             if let Some(preds) = &mut preds {
-                let index = preds.iter()
-                    .position(|pred| {
-                        match pred {
-                            WherePredicate::Type(tpred) => {
-                                &tpred.bounded_ty.to_token_stream().to_string() == tp
-                            }
-                            WherePredicate::Eq(eqpred) => {
-                                &eqpred.lhs_ty.to_token_stream().to_string() == tp
-                            }
-                            _ => false,
-                        }
-                    });
+                let index = preds.iter().position(|pred| match pred {
+                    WherePredicate::Type(tpred) => {
+                        &tpred.bounded_ty.to_token_stream().to_string() == tp
+                    }
+                    WherePredicate::Eq(eqpred) => {
+                        &eqpred.lhs_ty.to_token_stream().to_string() == tp
+                    }
+                    _ => false,
+                });
                 if let Some(index) = index {
                     preds.remove(index);
                 }
@@ -998,9 +999,9 @@ impl GenericsFilter for Generics {
 
         // Build the new generics
         let inbetween = if ltdefs.is_empty() || tparams.is_empty() {
-            quote!{ }
+            quote! {}
         } else {
-            quote!{ , }
+            quote! { , }
         };
         let tokens = match preds {
             Some(preds) if !preds.is_empty() => {
@@ -1021,10 +1022,9 @@ impl GenericsFilter for Generics {
 
 #[cfg(test)]
 mod tests {
-    use crate::helper::{SnakeCase, GenericsFilter};
+    use crate::helper::{GenericsFilter, SnakeCase};
     use quote::{quote, ToTokens};
     use syn::ItemStruct;
-
 
     #[test]
     fn to_snake_case() {
@@ -1046,6 +1046,9 @@ mod tests {
         ast.generics = generics.filter_unused(&ast).unwrap();
 
         let result = ast.to_token_stream().to_string();
-        assert_eq!(result, "struct Test < 'b , I : 'b + ToString > { field : I , }");
+        assert_eq!(
+            result,
+            "struct Test < 'b , I : 'b + ToString > { field : I , }"
+        );
     }
 }

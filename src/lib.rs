@@ -3,9 +3,9 @@
 //! methods like `fn is_<variant>(&self) -> bool` or `fn unwrap_<variant>(self) -> <inner>`,
 //! supporting variants with named or unnamed fields (or none), as well as generics. See the
 //! [macro's documentation](macro@enpow) for details on the specific methods supported.
-//! 
+//!
 //! ## Usage Example
-//! 
+//!
 //! ```rust
 //! use enpow::enpow;
 //!
@@ -33,28 +33,28 @@
 //!     Minus(Span),
 //!     Number { span: Span, value: u64 },
 //! }
-//! 
+//!
 //! #[allow(unused)]
 //! #[derive(Debug, PartialEq)]
 //! pub struct TokenNumber<Span> {
 //!     pub span: Span,
 //!     pub value: u64,
 //! }
-//! 
+//!
 //! #[allow(unused)]
 //! #[derive(Debug, PartialEq, Clone, Copy)]
 //! pub struct TokenNumberRef<'token_number, Span> {
 //!     pub span: &'token_number Span,
 //!     pub value: &'token_number u64,
 //! }
-//! 
+//!
 //! #[allow(unused)]
 //! #[derive(Debug, PartialEq)]
 //! pub struct TokenNumberMut<'token_number, Span> {
 //!     pub span: &'token_number mut Span,
 //!     pub value: &'token_number mut u64,
 //! }
-//! 
+//!
 //! #[automatically_derived]
 //! #[allow(unused)]
 //! impl<Span> Token<Span> {
@@ -64,56 +64,56 @@
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn plus_as_ref(&self) -> Option<&Span> {
 //!         match self {
 //!             Token::Plus(f0) => Some(f0),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn plus_as_mut(&mut self) -> Option<&mut Span> {
 //!         match self {
 //!             Token::Plus(f0) => Some(f0),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn minus(self) -> Option<Span> {
 //!         match self {
 //!             Token::Minus(f0) => Some(f0),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn minus_as_ref(&self) -> Option<&Span> {
 //!         match self {
 //!             Token::Minus(f0) => Some(f0),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn minus_as_mut(&mut self) -> Option<&mut Span> {
 //!         match self {
 //!             Token::Minus(f0) => Some(f0),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn number(self) -> Option<TokenNumber<Span>> {
 //!         match self {
 //!             Token::Number { span, value } => Some(TokenNumber { span, value }),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn number_as_ref(&self) -> Option<TokenNumberRef<Span>> {
 //!         match self {
 //!             Token::Number { span, value } => Some(TokenNumberRef { span, value }),
 //!             _ => None,
 //!         }
 //!     }
-//! 
+//!
 //!     pub fn number_as_mut(&mut self) -> Option<TokenNumberMut<Span>> {
 //!         match self {
 //!             Token::Number { span, value } => Some(TokenNumberMut { span, value }),
@@ -121,11 +121,11 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! assert_eq!(Token::Plus(3).plus(), Some(3));
 //! assert_eq!(Token::Minus(7).plus(), None);
 //! assert_eq!(Token::Number { span: 0, value: 42 }.number().unwrap().span, 0);
-//! 
+//!
 //! let mut num = Token::Number { span: 10, value: 7 };
 //! *num.number_as_mut().unwrap().span = 20;
 //! assert_eq!(num.number(), Some(TokenNumber { span: 20, value: 7 }))
@@ -193,7 +193,7 @@ mod helper;
 /// This example will generate methods of the category `Var` and `IsVar`.
 /// ```rust
 /// # use enpow::enpow;
-/// 
+///
 /// #[enpow(Var, IsVar)]
 /// enum Test {
 ///     A,
@@ -206,7 +206,7 @@ mod helper;
 /// This example will generate all methods.
 /// ```rust
 /// # use enpow::enpow;
-/// 
+///
 /// #[enpow]
 /// enum Test {
 ///     A,
@@ -215,7 +215,7 @@ mod helper;
 ///     D { a: u32, b: i32 },
 /// }
 /// ```
-/// 
+///
 /// ## Auto Derives
 ///
 /// Attaching the additional attribute `enpow_derive()` __below__ `enpow` adds the specified auto
@@ -225,14 +225,14 @@ mod helper;
 ///
 /// ```rust
 /// # use enpow::enpow;
-/// 
+///
 /// #[enpow]
 /// #[enpow_derive(Clone, Debug, PartialEq)]
 /// enum Test {
 ///     C(u32, i32),
 ///     D { a: u32, b: i32 },
 /// }
-/// 
+///
 /// // Using PartialEq and Debug
 /// assert_eq!(Test::D { a: 7, b: -7 }.unwrap_d(), TestD { a: 7, b: -7 });
 /// ```

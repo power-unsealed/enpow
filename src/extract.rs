@@ -1,7 +1,9 @@
-use crate::helper::{ExtractEnumInfo, ExtractVariantInfo, VarDeriveAttributeInfo, VariantType, GenericsFilter};
-use proc_macro2::{TokenStream, Span};
-use quote::{quote, format_ident};
-use syn::{DeriveInput, Error, Data, Fields, TypeTuple, ItemStruct};
+use crate::helper::{
+    ExtractEnumInfo, ExtractVariantInfo, GenericsFilter, VarDeriveAttributeInfo, VariantType,
+};
+use proc_macro2::{Span, TokenStream};
+use quote::{format_ident, quote};
+use syn::{Data, DeriveInput, Error, Fields, ItemStruct, TypeTuple};
 
 pub fn entry(_attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
     generate(item)
@@ -29,12 +31,10 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
         let identifier = &variant.identifier;
         let type_ident = format_ident!("{enum_ident}{identifier}");
         let (data_type, type_def) = match variant.var_type {
-            VariantType::Unit => {
-                (
-                    quote! { #type_ident },
-                    quote! { #visibility struct #type_ident; },
-                )
-            }
+            VariantType::Unit => (
+                quote! { #type_ident },
+                quote! { #visibility struct #type_ident; },
+            ),
             VariantType::Field => {
                 let single = variant.data_type.0;
 
@@ -48,7 +48,7 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
 
                 (
                     quote! { #type_ident #gen_short },
-                    quote! { #visibility struct #type_ident #gen_main ( pub #single ) #gen_where; }
+                    quote! { #visibility struct #type_ident #gen_main ( pub #single ) #gen_where; },
                 )
             }
             VariantType::Unnamed => {
@@ -70,12 +70,7 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
                     },
                 )
             }
-            VariantType::Named => {
-                (
-                    variant.data_type.0,
-                    variant.type_def.0.unwrap(),
-                )
-            }
+            VariantType::Named => (variant.data_type.0, variant.type_def.0.unwrap()),
         };
 
         // Manipulate the corresponding enum variant to contain only this new type
