@@ -5,10 +5,27 @@ mod outer {
     #[enpow_derive(Debug, PartialEq)]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
+        /// Docs for `A`
         A,
-        B(T),
-        C(T, S),
-        D { a: T, b: S },
+        /// Docs for `B`
+        B(
+            /// Docs for `B::0`
+            T,
+        ),
+        /// Docs for `C`
+        C(
+            /// Docs for `C::0`
+            T,
+            /// Docs for `C::1`
+            S,
+        ),
+        /// Docs for `D`
+        D {
+            /// Docs for `D::a`
+            a: T,
+            /// Docs for `D::b`
+            b: S,
+        },
     }
 }
 
