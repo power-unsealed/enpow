@@ -301,12 +301,9 @@ impl VariantInfo {
             .map(|field| (field.ident.unwrap(), field.ty))
             .unzip();
         let constructor = quote! { { #(#field_idents),* } };
-        let (_, gen_short, gen_where) = parent.generics.split_for_impl();
 
         // Self struct
         let type_ident = format_ident!("{enum_ident}{identifier}");
-        let generics = &parent.generics;
-        let self_type = quote! { #type_ident #gen_short };
         let fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
@@ -316,13 +313,15 @@ impl VariantInfo {
             #visibility struct #type_ident { #(#fields),* }
         };
         let generics = syn::parse2::<ItemStruct>(without_gen)?
-            .filter_unused_generics(generics)?;
+            .filter_unused_generics(&parent.generics)?;
+        let (_, gen_short, gen_where) = generics.split_for_impl();
+        let self_type = quote! { #type_ident #gen_short };
         let self_def = quote! {
             #visibility struct #type_ident #generics #gen_where { #(#fields),* }
         };
         let data_constr = quote! { #type_ident #constructor };
 
-        // Build generics for ref and mut
+        // Build unfiltered generics for ref and mut
         let lifetime_name = format!("'{}", type_ident.to_string().to_snake_case());
         let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
         let mut gen_params = generics.params.clone();
@@ -332,7 +331,6 @@ impl VariantInfo {
 
         // Ref struct
         let ref_ident = format_ident!("{type_ident}Ref");
-        let ref_type = quote! { #ref_ident #gen_short };
         let ref_fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
@@ -343,6 +341,8 @@ impl VariantInfo {
         };
         let ref_generics = syn::parse2::<ItemStruct>(without_gen)?
             .filter_unused_generics(&ref_generics)?;
+        let (_, gen_short, gen_where) = ref_generics.split_for_impl();
+        let ref_type = quote! { #ref_ident #gen_short };
         let ref_def = quote! {
             #visibility struct #ref_ident #ref_generics #gen_where { #(#ref_fields),* }
         };
@@ -350,12 +350,12 @@ impl VariantInfo {
 
         // Mut struct
         let mut_ident = format_ident!("{type_ident}Mut");
-        let mut_type = quote! { #mut_ident #gen_short };
         let mut_fields: Vec<_> = field_idents
             .iter()
             .zip(field_types.iter())
             .map(|(i, t)| quote! { pub #i: &#lifetime mut #t })
             .collect();
+        let mut_type = quote! { #mut_ident #gen_short };
         let mut_def = quote! {
             #visibility struct #mut_ident #ref_generics #gen_where { #(#mut_fields),* }
         };
