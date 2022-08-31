@@ -72,7 +72,7 @@ mod helper;
 ///     C(u32, i32),
 ///     D { a: u32, b: i32 },
 /// }
-/// 
+///
 /// // Use the auto implementation
 /// assert!(Test::A.is_a());
 /// assert_eq!(Test::B(7).b(), Some(7));
@@ -90,12 +90,12 @@ mod helper;
 ///     C(u32, i32),
 ///     D { a: u32, b: i32 },
 /// }
-/// 
+///
 /// // Use the auto implementation
 /// assert!(Test::A.is_a());
 /// assert_eq!(Test::B(7).b(), Some(7));
 /// Test::C(3, -3).expect_c("Expected Test::C");
-/// 
+///
 /// let mut test = Test::D { a: 7, b: -7 };
 /// if let Some(dmut) = test.d_as_mut() {
 ///     *dmut.b = 42;

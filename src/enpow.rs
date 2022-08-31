@@ -4,7 +4,7 @@ use crate::helper::{
     DeriveAttributeInfo, EnumInfo, EnumInfoAdapter, VariantInfo, VariantInfoAdapter, VariantType,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -40,12 +40,33 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         .map(|var| var.extract_info(&parent))
         .collect::<Result<_, _>>()?;
 
+    // Check all variants whether there is a name clash when turned into snake case
+    let var_names: Vec<_> = variants
+        .iter()
+        .map(|v| (v.snake_case.clone(), v.identifier.span()))
+        .collect();
+    for (i, (i_name, _)) in var_names.iter().enumerate() {
+        for (j, (j_name, span)) in var_names.iter().enumerate() {
+            if i != j && i_name == j_name {
+                let i_ident = &variants[i].identifier;
+                return Err(Error::new(
+                    span.clone(),
+                    format!(
+                        "Identifier clashes with other variant `{i_ident}` when turned into \
+                        snake case: `{i_name}`. Consider renaming one of the variants"
+                    ),
+                ));
+            }
+        }
+    }
+
     // Generate all requested methods
     let mut methods = Vec::new();
     let mut self_defs = Vec::new();
     let mut ref_defs = Vec::new();
     let mut mut_defs = Vec::new();
     for mut variant in variants {
+        // Build all selected method types for that variant
         methods.extend(variant.build_method_types(&parent, &types));
 
         // Build type definitions as needed
@@ -112,9 +133,10 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
     let visibility = &parent.visibility;
     let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
-    Ok(quote! {
-        #output
-
+    // Generate the output tokens, while preserving the span for the original enum, but pointing
+    // all additional tokens to the call site
+    let original_tokens = output.to_token_stream();
+    let additional_tokens = quote_spanned! { Span::call_site() =>
         #(#[allow(unused)] #self_derives #self_defs)*
         #(#[allow(unused)] #ref_derives #[derive(Clone, Copy)] #ref_defs)*
         #(#[allow(unused)] #ref_derives #mut_defs)*
@@ -124,6 +146,11 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         impl #gen_full #enum_ident #gen_short #gen_where {
             #(#visibility #methods)*
         }
+    };
+
+    Ok(quote! {
+        #original_tokens
+        #additional_tokens
     })
 }
 
