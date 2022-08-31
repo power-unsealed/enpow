@@ -1,17 +1,23 @@
+use std::collections::HashSet;
+
 use crate::helper::{
-    ExtractEnumInfo, ExtractVariantInfo, MethodType, VarDeriveAttributeInfo, VariantType,
+    DeriveAttributeInfo, EnumInfo, EnumInfoAdapter, VariantInfo, VariantInfoAdapter, VariantType,
 };
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{DeriveInput, Error};
+use syn::{
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
+    DeriveInput, Error, Ident, Token,
+};
 
 pub fn entry(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
-    let types: Vec<_> = MethodType::from_attribute(attribute)?.into_iter().collect();
+    let types: Vec<_> = EnpowType::from_attribute(attribute)?.into_iter().collect();
 
     generate(item, &types)
 }
 
-fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Error> {
+fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Error> {
     // Find out which type definition are necessary
     let mut gen_self_def = false;
     let mut gen_ref_def = false;
@@ -66,7 +72,7 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
             .unwrap_or(false)
         {
             // Get the derive Traits
-            let info: VarDeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
+            let info: DeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
             self_derives.extend(info.derives);
 
             // Remove this attribute from the output ast
@@ -121,9 +127,144 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
     })
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EnpowType {
+    Variant,
+    IsVariant,
+    VariantAsRef,
+    UnwrapVariant,
+    ExpectVariant,
+}
+
+impl EnpowType {
+    pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<EnpowType>, Error> {
+        let info: EnpowAttributeInfo = syn::parse2(attribute)?;
+        Ok(info.methods)
+    }
+
+    pub fn needs_self_type(&self) -> bool {
+        match self {
+            EnpowType::Variant => true,
+            EnpowType::IsVariant => false,
+            EnpowType::VariantAsRef => false,
+            EnpowType::UnwrapVariant => true,
+            EnpowType::ExpectVariant => true,
+        }
+    }
+
+    pub fn needs_ref_type(&self) -> bool {
+        match self {
+            EnpowType::Variant => false,
+            EnpowType::IsVariant => true,
+            EnpowType::VariantAsRef => true,
+            EnpowType::UnwrapVariant => false,
+            EnpowType::ExpectVariant => false,
+        }
+    }
+
+    pub fn needs_mut_type(&self) -> bool {
+        match self {
+            EnpowType::Variant => false,
+            EnpowType::IsVariant => false,
+            EnpowType::VariantAsRef => true,
+            EnpowType::UnwrapVariant => false,
+            EnpowType::ExpectVariant => false,
+        }
+    }
+}
+
+pub struct EnpowAttributeInfo {
+    methods: HashSet<EnpowType>,
+}
+
+impl Parse for EnpowAttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
+        let mut methods = HashSet::new();
+
+        // If there are no arguments, insert a fake "All"
+        if items.is_empty() {
+            items.push(Ident::new("All", Span::call_site()));
+        }
+
+        for item in items {
+            match item.to_string().as_str() {
+                "All" => {
+                    methods.insert(EnpowType::Variant);
+                    methods.insert(EnpowType::IsVariant);
+                    methods.insert(EnpowType::VariantAsRef);
+                    methods.insert(EnpowType::UnwrapVariant);
+                    methods.insert(EnpowType::ExpectVariant);
+                }
+                "Var" => {
+                    methods.insert(EnpowType::Variant);
+                }
+                "IsVar" => {
+                    methods.insert(EnpowType::IsVariant);
+                }
+                "VarAsRef" => {
+                    methods.insert(EnpowType::VariantAsRef);
+                }
+                "UnwrapVar" => {
+                    methods.insert(EnpowType::UnwrapVariant);
+                }
+                "ExpectVar" => {
+                    methods.insert(EnpowType::ExpectVariant);
+                }
+                some => {
+                    return Err(Error::new_spanned(
+                        item,
+                        format!("Unknown argument `{some}`"),
+                    ));
+                }
+            }
+        }
+
+        Ok(EnpowAttributeInfo { methods })
+    }
+}
+
+impl VariantInfo {
+    pub fn build_method_types(
+        &mut self,
+        parent: &EnumInfo,
+        types: &[EnpowType],
+    ) -> Vec<TokenStream> {
+        let mut methods = Vec::new();
+        for t in types {
+            match t {
+                EnpowType::Variant => {
+                    methods.push(self.build_variant());
+                }
+                EnpowType::IsVariant => {
+                    methods.push(self.build_is());
+                    methods.push(self.build_is_and());
+                }
+                EnpowType::VariantAsRef => {
+                    methods.push(self.build_as_ref());
+                    methods.push(self.build_as_mut());
+                }
+                EnpowType::UnwrapVariant => {
+                    methods.push(self.build_unwrap(parent));
+                    methods.push(self.build_unwrap_as_ref(parent));
+                    methods.push(self.build_unwrap_as_mut(parent));
+                    methods.push(self.build_unwrap_or());
+                    methods.push(self.build_unwrap_or_else());
+                }
+                EnpowType::ExpectVariant => {
+                    methods.push(self.build_expect());
+                    methods.push(self.build_expect_as_ref());
+                    methods.push(self.build_expect_as_mut());
+                }
+            }
+        }
+        methods
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::helper::MethodType;
+    use crate::enpow::EnpowType;
     use proc_macro2::TokenStream;
     use std::str::FromStr;
 
@@ -146,7 +287,7 @@ mod tests {
         }";
         let input = TokenStream::from_str(source).unwrap();
         let result =
-            super::generate(input, &[MethodType::Variant, MethodType::VariantAsRef]).unwrap();
+            super::generate(input, &[EnpowType::Variant, EnpowType::VariantAsRef]).unwrap();
 
         println!("{result}");
     }

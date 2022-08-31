@@ -18,173 +18,14 @@ macro_rules! cache_access {
     }};
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ExtractType {
-    Unit,
-    Single,
-    Unnamed,
-    Named,
-}
-
-impl ExtractType {
-    pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<ExtractType>, Error> {
-        let info: ExtractAttributeInfo = syn::parse2(attribute)?;
-        Ok(info.types)
-    }
-}
-
-pub struct ExtractAttributeInfo {
-    types: HashSet<ExtractType>,
-}
-
-impl Parse for ExtractAttributeInfo {
-    fn parse(input: ParseStream) -> Result<Self, Error> {
-        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
-        let mut types = HashSet::new();
-
-        // If there are no arguments, insert a fake "All"
-        if items.is_empty() {
-            items.push(Ident::new("All", Span::call_site()));
-        }
-
-        for item in items {
-            match item.to_string().as_str() {
-                "All" => {
-                    types.insert(ExtractType::Unit);
-                    types.insert(ExtractType::Single);
-                    types.insert(ExtractType::Unnamed);
-                    types.insert(ExtractType::Named);
-                }
-                "Unit" => {
-                    types.insert(ExtractType::Unit);
-                }
-                "Single" => {
-                    types.insert(ExtractType::Single);
-                }
-                "Unnamed" => {
-                    types.insert(ExtractType::Unnamed);
-                }
-                "Named" => {
-                    types.insert(ExtractType::Named);
-                }
-                some => {
-                    return Err(Error::new_spanned(
-                        item,
-                        format!("Unknown argument `{some}`"),
-                    ));
-                }
-            }
-        }
-
-        Ok(ExtractAttributeInfo { types })
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MethodType {
-    All,
-    Variant,
-    IsVariant,
-    VariantAsRef,
-    UnwrapVariant,
-    ExpectVariant,
-}
-
-impl MethodType {
-    pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<MethodType>, Error> {
-        let info: EnpowAttributeInfo = syn::parse2(attribute)?;
-        Ok(info.methods)
-    }
-
-    pub fn needs_self_type(&self) -> bool {
-        match self {
-            MethodType::All => true,
-            MethodType::Variant => true,
-            MethodType::IsVariant => false,
-            MethodType::VariantAsRef => false,
-            MethodType::UnwrapVariant => true,
-            MethodType::ExpectVariant => true,
-        }
-    }
-
-    pub fn needs_ref_type(&self) -> bool {
-        match self {
-            MethodType::All => true,
-            MethodType::Variant => false,
-            MethodType::IsVariant => true,
-            MethodType::VariantAsRef => true,
-            MethodType::UnwrapVariant => false,
-            MethodType::ExpectVariant => false,
-        }
-    }
-
-    pub fn needs_mut_type(&self) -> bool {
-        match self {
-            MethodType::All => true,
-            MethodType::Variant => false,
-            MethodType::IsVariant => false,
-            MethodType::VariantAsRef => true,
-            MethodType::UnwrapVariant => false,
-            MethodType::ExpectVariant => false,
-        }
-    }
-}
-
-pub struct EnpowAttributeInfo {
-    methods: HashSet<MethodType>,
-}
-
-impl Parse for EnpowAttributeInfo {
-    fn parse(input: ParseStream) -> Result<Self, Error> {
-        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
-        let mut methods = HashSet::new();
-
-        // If there are no arguments, insert a fake "All"
-        if items.is_empty() {
-            items.push(Ident::new("All", Span::call_site()));
-        }
-
-        for item in items {
-            match item.to_string().as_str() {
-                "All" => {
-                    methods.insert(MethodType::All);
-                }
-                "Var" => {
-                    methods.insert(MethodType::Variant);
-                }
-                "IsVar" => {
-                    methods.insert(MethodType::IsVariant);
-                }
-                "VarAsRef" => {
-                    methods.insert(MethodType::VariantAsRef);
-                }
-                "UnwrapVar" => {
-                    methods.insert(MethodType::UnwrapVariant);
-                }
-                "ExpectVar" => {
-                    methods.insert(MethodType::ExpectVariant);
-                }
-                some => {
-                    return Err(Error::new_spanned(
-                        item,
-                        format!("Unknown argument `{some}`"),
-                    ));
-                }
-            }
-        }
-
-        Ok(EnpowAttributeInfo { methods })
-    }
-}
-
-pub struct VarDeriveAttributeInfo {
+pub struct DeriveAttributeInfo {
     pub derives: Vec<Path>,
 }
 
-impl Parse for VarDeriveAttributeInfo {
+impl Parse for DeriveAttributeInfo {
     fn parse(input: ParseStream) -> Result<Self, Error> {
         if input.is_empty() {
-            Ok(VarDeriveAttributeInfo {
+            Ok(DeriveAttributeInfo {
                 derives: Vec::new(),
             })
         } else {
@@ -193,7 +34,7 @@ impl Parse for VarDeriveAttributeInfo {
             parenthesized!(content in input);
             let derives: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
 
-            Ok(VarDeriveAttributeInfo {
+            Ok(DeriveAttributeInfo {
                 derives: derives.into_iter().collect(),
             })
         }
@@ -209,11 +50,11 @@ pub struct EnumInfo {
     pub data: DataEnum,
 }
 
-pub trait ExtractEnumInfo {
+pub trait EnumInfoAdapter {
     fn extract_info(self) -> Result<EnumInfo, Error>;
 }
 
-impl ExtractEnumInfo for DeriveInput {
+impl EnumInfoAdapter for DeriveInput {
     fn extract_info(self) -> Result<EnumInfo, Error> {
         let span = self.span();
 
@@ -249,13 +90,13 @@ pub struct NamedFieldInfo {
     pub data_type: Type,
 }
 
-struct SrmVariant<T> {
+struct SelfRefMut<T> {
     vself: T,
     vref: T,
     vmut: T,
 }
 
-impl<T> SrmVariant<T> {
+impl<T> SelfRefMut<T> {
     fn new(vself: T, vref: T, vmut: T) -> Self {
         Self { vself, vref, vmut }
     }
@@ -266,17 +107,6 @@ pub enum VariantType {
     Single(UnnamedFieldInfo),
     Unnamed(Vec<UnnamedFieldInfo>),
     Named(Vec<NamedFieldInfo>),
-}
-
-impl VariantType {
-    pub fn get_extract_type(&self) -> ExtractType {
-        match self {
-            VariantType::Unit => ExtractType::Unit,
-            VariantType::Single(_) => ExtractType::Single,
-            VariantType::Unnamed(_) => ExtractType::Unnamed,
-            VariantType::Named(_) => ExtractType::Named,
-        }
-    }
 }
 
 pub struct VariantInfo {
@@ -290,11 +120,11 @@ pub struct VariantInfo {
     pub full_path: Path,
     pub generics: Generics,
     pub docs: Vec<Attribute>,
-    type_idents: SrmVariant<Ident>,
-    type_defs_cache: SrmVariant<Option<TokenStream>>,
-    data_types_cache: SrmVariant<Option<TokenStream>>,
+    type_idents: SelfRefMut<Ident>,
+    type_defs_cache: SelfRefMut<Option<TokenStream>>,
+    data_types_cache: SelfRefMut<Option<TokenStream>>,
     pattern_cache: Option<TokenStream>,
-    construction_cache: SrmVariant<Option<TokenStream>>,
+    construction_cache: SelfRefMut<Option<TokenStream>>,
 }
 
 impl VariantInfo {
@@ -344,16 +174,12 @@ impl VariantInfo {
             identifier,
             generics,
             docs,
-            type_idents: SrmVariant::new(self_ident, ref_ident, mut_ident),
-            type_defs_cache: SrmVariant::new(None, None, None),
-            data_types_cache: SrmVariant::new(None, None, None),
+            type_idents: SelfRefMut::new(self_ident, ref_ident, mut_ident),
+            type_defs_cache: SelfRefMut::new(None, None, None),
+            data_types_cache: SelfRefMut::new(None, None, None),
             pattern_cache: None,
-            construction_cache: SrmVariant::new(None, None, None),
+            construction_cache: SelfRefMut::new(None, None, None),
         })
-    }
-
-    fn is_extract_type(&self, t: ExtractType) -> bool {
-        self.var_type.get_extract_type() == t
     }
 
     fn build_type_def(
@@ -608,57 +434,6 @@ impl VariantInfo {
         .clone()
     }
 
-    pub fn build_method_types(
-        &mut self,
-        parent: &EnumInfo,
-        types: &[MethodType],
-    ) -> Vec<TokenStream> {
-        let mut methods = Vec::new();
-        for t in types {
-            match t {
-                MethodType::All => {
-                    methods.push(self.build_variant());
-                    methods.push(self.build_is());
-                    methods.push(self.build_is_and());
-                    methods.push(self.build_as_ref());
-                    methods.push(self.build_as_mut());
-                    methods.push(self.build_unwrap(parent));
-                    methods.push(self.build_unwrap_as_ref(parent));
-                    methods.push(self.build_unwrap_as_mut(parent));
-                    methods.push(self.build_unwrap_or());
-                    methods.push(self.build_unwrap_or_else());
-                    methods.push(self.build_expect());
-                    methods.push(self.build_expect_as_ref());
-                    methods.push(self.build_expect_as_mut());
-                }
-                MethodType::Variant => {
-                    methods.push(self.build_variant());
-                }
-                MethodType::IsVariant => {
-                    methods.push(self.build_is());
-                    methods.push(self.build_is_and());
-                }
-                MethodType::VariantAsRef => {
-                    methods.push(self.build_as_ref());
-                    methods.push(self.build_as_mut());
-                }
-                MethodType::UnwrapVariant => {
-                    methods.push(self.build_unwrap(parent));
-                    methods.push(self.build_unwrap_as_ref(parent));
-                    methods.push(self.build_unwrap_as_mut(parent));
-                    methods.push(self.build_unwrap_or());
-                    methods.push(self.build_unwrap_or_else());
-                }
-                MethodType::ExpectVariant => {
-                    methods.push(self.build_expect());
-                    methods.push(self.build_expect_as_ref());
-                    methods.push(self.build_expect_as_mut());
-                }
-            }
-        }
-        methods
-    }
-
     pub fn build_variant(&mut self) -> TokenStream {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
@@ -904,11 +679,11 @@ impl VariantInfo {
     }
 }
 
-pub trait ExtractVariantInfo {
+pub trait VariantInfoAdapter {
     fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error>;
 }
 
-impl ExtractVariantInfo for Variant {
+impl VariantInfoAdapter for Variant {
     fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let identifier = self.ident;
         let docs = self.attrs.extract_docs();

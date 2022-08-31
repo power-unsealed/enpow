@@ -1,9 +1,13 @@
 use std::collections::HashSet;
 
-use crate::helper::{ExtractEnumInfo, ExtractType, ExtractVariantInfo, VarDeriveAttributeInfo};
+use crate::helper::{DeriveAttributeInfo, EnumInfoAdapter, VariantInfoAdapter, VariantType};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Data, DeriveInput, Error, Fields};
+use syn::{
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
+    Data, DeriveInput, Error, Fields, Ident, Token,
+};
 
 pub fn entry(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
     let types = ExtractType::from_attribute(attribute)?;
@@ -58,7 +62,7 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
             .unwrap_or(false)
         {
             // Get the derive Traits
-            let info: VarDeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
+            let info: DeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
             derives.extend(info.derives);
 
             // Remove this attribute from the output ast
@@ -77,9 +81,82 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
     })
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExtractType {
+    Unit,
+    Single,
+    Unnamed,
+    Named,
+}
+
+impl ExtractType {
+    pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<ExtractType>, Error> {
+        let info: ExtractAttributeInfo = syn::parse2(attribute)?;
+        Ok(info.types)
+    }
+}
+
+pub struct ExtractAttributeInfo {
+    types: HashSet<ExtractType>,
+}
+
+impl Parse for ExtractAttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
+        let mut types = HashSet::new();
+
+        // If there are no arguments, insert a fake "All"
+        if items.is_empty() {
+            items.push(Ident::new("All", Span::call_site()));
+        }
+
+        for item in items {
+            match item.to_string().as_str() {
+                "All" => {
+                    types.insert(ExtractType::Unit);
+                    types.insert(ExtractType::Single);
+                    types.insert(ExtractType::Unnamed);
+                    types.insert(ExtractType::Named);
+                }
+                "Unit" => {
+                    types.insert(ExtractType::Unit);
+                }
+                "Single" => {
+                    types.insert(ExtractType::Single);
+                }
+                "Unnamed" => {
+                    types.insert(ExtractType::Unnamed);
+                }
+                "Named" => {
+                    types.insert(ExtractType::Named);
+                }
+                some => {
+                    return Err(Error::new_spanned(
+                        item,
+                        format!("Unknown argument `{some}`"),
+                    ));
+                }
+            }
+        }
+
+        Ok(ExtractAttributeInfo { types })
+    }
+}
+
+impl VariantType {
+    pub fn get_extract_type(&self) -> ExtractType {
+        match self {
+            VariantType::Unit => ExtractType::Unit,
+            VariantType::Single(_) => ExtractType::Single,
+            VariantType::Unnamed(_) => ExtractType::Unnamed,
+            VariantType::Named(_) => ExtractType::Named,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::helper::ExtractType;
+    use crate::extract::ExtractType;
     use proc_macro2::TokenStream;
     use std::{collections::HashSet, str::FromStr};
 
