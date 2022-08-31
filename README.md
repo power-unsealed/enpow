@@ -317,7 +317,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 # License
 
-&copy; 2022 power-unsealed.
+&copy; 2022 Florian Köhler.
 
 This project is licensed at your option under either of
 
