@@ -197,9 +197,9 @@ impl VariantInfo {
                 quote! { #(#docs)* #visibility struct #ident; }
             }
             VariantType::Single(field) => {
-                let docs = &field.docs;
+                let field_docs = &field.docs;
                 let dtype = &field.data_type;
-                let field = quote! { #(#docs)* pub #type_prefix #dtype };
+                let field = quote! { #(#field_docs)* pub #type_prefix #dtype };
 
                 quote! {
                     #(#docs)*
