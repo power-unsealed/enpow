@@ -30,6 +30,7 @@ mod outer {
 }
 
 #[test]
+#[allow(path_statements)]
 fn test() {
     outer::InnerA;
     outer::InnerB(0);

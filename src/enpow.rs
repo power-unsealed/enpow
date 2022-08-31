@@ -1,4 +1,6 @@
-use crate::helper::{ExtractEnumInfo, ExtractVariantInfo, MethodType, VarDeriveAttributeInfo};
+use crate::helper::{
+    ExtractEnumInfo, ExtractVariantInfo, MethodType, VarDeriveAttributeInfo, VariantType,
+};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{DeriveInput, Error};
@@ -37,18 +39,20 @@ fn generate(input: TokenStream, types: &[MethodType]) -> Result<TokenStream, Err
     let mut self_defs = Vec::new();
     let mut ref_defs = Vec::new();
     let mut mut_defs = Vec::new();
-    for variant in variants {
+    for mut variant in variants {
         methods.extend(variant.build_method_types(&parent, &types));
 
-        // Save type definitions as needed
-        if gen_self_def {
-            self_defs.extend(variant.type_def.0.clone());
-        }
-        if gen_ref_def {
-            ref_defs.extend(variant.type_def.1.clone());
-        }
-        if gen_mut_def {
-            mut_defs.extend(variant.type_def.2.clone());
+        // Build type definitions as needed
+        if let VariantType::Named(_) = &variant.var_type {
+            if gen_self_def {
+                self_defs.push(variant.build_self_type_def());
+            }
+            if gen_ref_def {
+                ref_defs.push(variant.build_ref_type_def());
+            }
+            if gen_mut_def {
+                mut_defs.push(variant.build_mut_type_def());
+            }
         }
     }
 
@@ -133,16 +137,13 @@ mod tests {
 
     #[test]
     fn enpow() {
-        let source = "#[enpow_derive(Debug, PartialEq)]
-            #[derive(Clone, Debug, PartialEq)]
-            pub enum Token<'a, Span> {
-                Plus(Span),
-                Minus(Span),
-                Number {
-                    span: Span,
-                    value: u64,
-                }
-            }";
+        let source = "
+        #[enpow_derive(Debug, PartialEq)]
+        #[derive(Debug, PartialEq)]
+        pub enum Inner<T, S: ToString> {
+            /// Docs for `A`
+            A,
+        }";
         let input = TokenStream::from_str(source).unwrap();
         let result =
             super::generate(input, &[MethodType::Variant, MethodType::VariantAsRef]).unwrap();
