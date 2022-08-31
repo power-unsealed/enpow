@@ -4,9 +4,9 @@
 //! supporting variants with named or unnamed fields (or none), as well as generics. See the
 //! [`enpow` macro documentation](macro@enpow) for details on the specific methods supported.
 //!
-//! Additionally, it allows to extract the data associated with each enum variant into separate
-//! structs, allowing for more compact code, e.g. when designing an Abstract Syntax Tree. See the
-//! [`extract` macro documentation](macro@enpow) for more details.
+//! Additionally, this crate allows to extract the data associated with each enum variant into
+//! separate structs, allowing for more compact code e.g. when designing an Abstract Syntax Tree.
+//! See the [`extract` macro documentation](macro@extract) for more details.
 //!
 //! It is also possible to combine both macros when keeping them in the right order: first
 //! `extract` and then `enpow`. Combining both macros avoids generating separate structs for
@@ -423,7 +423,7 @@ pub fn enpow(
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// The `extract` attribute attached to an enum turns each variant into a separate struct that
+/// The `extract` attribute attached to an enum turns each variant into a separate struct that then
 /// becomes the only field of the variant. It supports generics and variants of every type, with
 /// named or unnamed fields or no fields attached. Variants without data are turned into unit
 /// structs, variants with unnamed fields get turned into tuple structs, and variants with named
