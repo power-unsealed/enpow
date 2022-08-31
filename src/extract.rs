@@ -30,7 +30,7 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
             // For each variant, build the data type and type definition
             let data_type = variant.build_extracted_self_type();
             let type_def = variant.build_self_type_def();
-    
+
             // Manipulate the corresponding enum variant to contain only this new type
             let data = match &mut output.data {
                 Data::Enum(data) => data,
@@ -42,7 +42,7 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
                 }
             };
             data.variants[i].fields = Fields::Unnamed(syn::parse2(quote! { (#data_type) })?);
-    
+
             // Save the type definition
             type_defs.push(type_def);
         }
@@ -79,15 +79,15 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
 
 #[cfg(test)]
 mod tests {
-    use proc_macro2::TokenStream;
-    use std::{str::FromStr, collections::HashSet};
     use crate::helper::ExtractType;
+    use proc_macro2::TokenStream;
+    use std::{collections::HashSet, str::FromStr};
 
     #[test]
     fn extract_wrong_target() {
         let source = "struct A;";
         let input = TokenStream::from_str(source).unwrap();
-        
+
         let mut types = HashSet::new();
         types.insert(ExtractType::Unit);
 
