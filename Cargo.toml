@@ -1,5 +1,12 @@
 [package]
 name = "enpow"
+license = "MIT OR Apache-2.0"
+authors = ["Florian Köhler"]
+description = "Generating methods for user defined enums as known from Option<T> or Result<T, E>"
+keywords = ["proc-macro", "macro", "enum", "utility", "generator"]
+categories = ["development-tools", "development-tools::build-utils"]
+repository = "https://github.com/power-unsealed/enpow"
+readme = "README.md"
 version = "1.0.0"
 edition = "2021"
 
