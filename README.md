@@ -311,6 +311,10 @@ assert!(token.is_number_and(|num: &TokenNumber<_>| num.value == 1024));
 ```
 </details>
 
+# Inspiration
+
+While the first plan for this crate was limited to simple `unwrap_as` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as limited alternative to this crate.
+
 # Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as below, without any additional terms or conditions.
