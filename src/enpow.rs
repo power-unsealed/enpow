@@ -280,10 +280,20 @@ mod tests {
     fn enpow() {
         let source = "
         #[enpow_derive(Debug, PartialEq)]
-        #[derive(Debug, PartialEq)]
-        pub enum Inner<T, S: ToString> {
-            /// Docs for `A`
-            A,
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum Token<Span> {
+            /// `+`
+            Plus(
+                /// Source span
+                Span
+            ),
+            /// Unsigned integer literal
+            Number {
+                /// Source span
+                span: Span,
+                /// Value
+                value: u64,
+            }
         }";
         let input = TokenStream::from_str(source).unwrap();
         let result =

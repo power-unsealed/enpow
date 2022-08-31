@@ -176,21 +176,20 @@ mod tests {
     fn extract() {
         let source = "
         #[extract_derive(Debug, PartialEq)]
-        #[derive(Debug, PartialEq)]
-        pub enum Inner<T, S: ToString> {
-            /// Doc for `A`
-            A,
-            /// Doc for `B`
-            B(T),
-            /// Doc for `C`
-            C(T, S),
-            /// Doc for `D`
-            D {
-                /// Doc for `D.a`
-                a: T,
-                /// Doc for `D.b`
-                b: S
-            },
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum Token<Span> {
+            /// `+`
+            Plus(
+                /// Source span
+                Span
+            ),
+            /// Unsigned integer literal
+            Number {
+                /// Source span
+                span: Span,
+                /// Value
+                value: u64,
+            }
         }";
         let input = TokenStream::from_str(source).unwrap();
 
