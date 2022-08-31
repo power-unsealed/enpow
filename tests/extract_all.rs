@@ -1,7 +1,7 @@
 mod outer {
     use enpow::extract;
 
-    #[extract]
+    #[extract(All)]
     #[extract_derive(Debug, PartialEq)]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {

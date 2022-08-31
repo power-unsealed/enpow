@@ -1,13 +1,17 @@
-use crate::helper::{ExtractEnumInfo, ExtractVariantInfo, VarDeriveAttributeInfo};
+use std::collections::HashSet;
+
+use crate::helper::{ExtractEnumInfo, ExtractType, ExtractVariantInfo, VarDeriveAttributeInfo};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Data, DeriveInput, Error, Fields};
 
-pub fn entry(_attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
-    generate(item)
+pub fn entry(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
+    let types = ExtractType::from_attribute(attribute)?;
+
+    generate(item, types)
 }
 
-fn generate(input: TokenStream) -> Result<TokenStream, Error> {
+fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStream, Error> {
     // Extract the necessray information from the given token stream
     let input: DeriveInput = syn::parse2(input)?;
     let mut output = input.clone();
@@ -22,24 +26,26 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
 
     let mut type_defs = Vec::new();
     for (i, mut variant) in variants.into_iter().enumerate() {
-        // For each variant, build the data type and type definition
-        let data_type = variant.build_extracted_self_type();
-        let type_def = variant.build_self_type_def();
-
-        // Manipulate the corresponding enum variant to contain only this new type
-        let data = match &mut output.data {
-            Data::Enum(data) => data,
-            _ => {
-                return Err(Error::new(
-                    Span::call_site(),
-                    "Can only be derived for enums",
-                ));
-            }
-        };
-        data.variants[i].fields = Fields::Unnamed(syn::parse2(quote! { (#data_type) })?);
-
-        // Save the type definition
-        type_defs.push(type_def);
+        if types.contains(&variant.var_type.get_extract_type()) {
+            // For each variant, build the data type and type definition
+            let data_type = variant.build_extracted_self_type();
+            let type_def = variant.build_self_type_def();
+    
+            // Manipulate the corresponding enum variant to contain only this new type
+            let data = match &mut output.data {
+                Data::Enum(data) => data,
+                _ => {
+                    return Err(Error::new(
+                        Span::call_site(),
+                        "Can only be derived for enums",
+                    ));
+                }
+            };
+            data.variants[i].fields = Fields::Unnamed(syn::parse2(quote! { (#data_type) })?);
+    
+            // Save the type definition
+            type_defs.push(type_def);
+        }
     }
 
     // Check for every attached attribute `extract_derive`
@@ -74,13 +80,18 @@ fn generate(input: TokenStream) -> Result<TokenStream, Error> {
 #[cfg(test)]
 mod tests {
     use proc_macro2::TokenStream;
-    use std::str::FromStr;
+    use std::{str::FromStr, collections::HashSet};
+    use crate::helper::ExtractType;
 
     #[test]
     fn extract_wrong_target() {
         let source = "struct A;";
         let input = TokenStream::from_str(source).unwrap();
-        let result = super::generate(input);
+        
+        let mut types = HashSet::new();
+        types.insert(ExtractType::Unit);
+
+        let result = super::generate(input, types);
         assert!(result.is_err());
     }
 
@@ -105,7 +116,13 @@ mod tests {
             },
         }";
         let input = TokenStream::from_str(source).unwrap();
-        let result = super::generate(input).unwrap();
+
+        let mut types = HashSet::new();
+        types.insert(ExtractType::Single);
+        types.insert(ExtractType::Unnamed);
+        types.insert(ExtractType::Named);
+
+        let result = super::generate(input, types).unwrap();
 
         println!("{result}");
     }

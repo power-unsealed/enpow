@@ -19,6 +19,68 @@ macro_rules! cache_access {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExtractType {
+    Unit,
+    Single,
+    Unnamed,
+    Named,
+}
+
+impl ExtractType {
+    pub fn from_attribute(attribute: TokenStream) -> Result<HashSet<ExtractType>, Error> {
+        let info: ExtractAttributeInfo = syn::parse2(attribute)?;
+        Ok(info.types)
+    }
+}
+
+pub struct ExtractAttributeInfo {
+    types: HashSet<ExtractType>,
+}
+
+impl Parse for ExtractAttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
+        let mut types = HashSet::new();
+
+        // If there are no arguments, insert a fake "All"
+        if items.is_empty() {
+            items.push(Ident::new("All", Span::call_site()));
+        }
+
+        for item in items {
+            match item.to_string().as_str() {
+                "All" => {
+                    types.insert(ExtractType::Unit);
+                    types.insert(ExtractType::Single);
+                    types.insert(ExtractType::Unnamed);
+                    types.insert(ExtractType::Named);
+                }
+                "Unit" => {
+                    types.insert(ExtractType::Unit);
+                }
+                "Single" => {
+                    types.insert(ExtractType::Single);
+                }
+                "Unnamed" => {
+                    types.insert(ExtractType::Unnamed);
+                }
+                "Named" => {
+                    types.insert(ExtractType::Named);
+                }
+                some => {
+                    return Err(Error::new_spanned(
+                        item,
+                        format!("Unknown argument `{some}`"),
+                    ));
+                }
+            }
+        }
+
+        Ok(ExtractAttributeInfo { types })
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MethodType {
     All,
     Variant,
@@ -206,6 +268,17 @@ pub enum VariantType {
     Named(Vec<NamedFieldInfo>),
 }
 
+impl VariantType {
+    pub fn get_extract_type(&self) -> ExtractType {
+        match self {
+            VariantType::Unit => ExtractType::Unit,
+            VariantType::Single(_) => ExtractType::Single,
+            VariantType::Unnamed(_) => ExtractType::Unnamed,
+            VariantType::Named(_) => ExtractType::Named,
+        }
+    }
+}
+
 pub struct VariantInfo {
     pub visibility: Visibility,
     pub var_type: VariantType,
@@ -277,6 +350,10 @@ impl VariantInfo {
             pattern_cache: None,
             construction_cache: SrmVariant::new(None, None, None),
         })
+    }
+
+    fn is_extract_type(&self, t: ExtractType) -> bool {
+        self.var_type.get_extract_type() == t
     }
 
     fn build_type_def(
