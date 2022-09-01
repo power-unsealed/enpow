@@ -155,28 +155,28 @@ mod helper;
 ///     V6(String),
 ///     Multi { v4: (u8, u8, u8, u8), v6: String },
 /// }
-/// 
+///
 /// #[allow(unused)]
 /// #[derive(Debug, PartialEq)]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
 ///     pub v6: String,
 /// }
-/// 
+///
 /// #[allow(unused)]
 /// #[derive(Debug, PartialEq, Clone, Copy)]
 /// struct IpAddressMultiRef<'ip_address_multi> {
 ///     pub v4: &'ip_address_multi (u8, u8, u8, u8),
 ///     pub v6: &'ip_address_multi String,
 /// }
-/// 
+///
 /// #[allow(unused)]
 /// #[derive(Debug, PartialEq)]
 /// struct IpAddressMultiMut<'ip_address_multi> {
 ///     pub v4: &'ip_address_multi mut (u8, u8, u8, u8),
 ///     pub v6: &'ip_address_multi mut String,
 /// }
-/// 
+///
 /// #[automatically_derived]
 /// #[allow(unused)]
 /// impl IpAddress {
@@ -858,16 +858,16 @@ pub fn enpow(
 ///     V6(IpAddressV6),
 ///     Multi(IpAddressMulti),
 /// }
-/// 
+///
 /// #[derive()]
 /// struct IpAddressNone;
-/// 
+///
 /// #[derive()]
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-/// 
+///
 /// #[derive()]
 /// struct IpAddressV6(pub String);
-/// 
+///
 /// #[derive()]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
@@ -912,10 +912,10 @@ pub fn enpow(
 ///     V6(String),
 ///     Multi(IpAddressMulti),
 /// }
-/// 
+///
 /// #[derive()]
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-/// 
+///
 /// #[derive()]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
@@ -964,16 +964,16 @@ pub fn enpow(
 ///     V6(IpAddressV6),
 ///     Multi(IpAddressMulti),
 /// }
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressNone;
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressV6(pub String);
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),

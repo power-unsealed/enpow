@@ -157,7 +157,6 @@ impl VariantType {
 #[cfg(test)]
 mod tests {
     use crate::extract::ExtractType;
-    use proc_macro2::TokenStream;
     use quote::quote;
     use std::collections::HashSet;
 
