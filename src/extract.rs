@@ -158,12 +158,12 @@ impl VariantType {
 mod tests {
     use crate::extract::ExtractType;
     use proc_macro2::TokenStream;
-    use std::{collections::HashSet, str::FromStr};
+    use quote::quote;
+    use std::collections::HashSet;
 
     #[test]
     fn extract_wrong_target() {
-        let source = "struct A;";
-        let input = TokenStream::from_str(source).unwrap();
+        let input = quote! { struct A; };
 
         let mut types = HashSet::new();
         types.insert(ExtractType::Unit);
@@ -174,24 +174,24 @@ mod tests {
 
     #[test]
     fn extract() {
-        let source = "
-        #[extract_derive(Debug, PartialEq)]
-        #[derive(Clone, Debug, PartialEq)]
-        pub enum Token<Span> {
-            /// `+`
-            Plus(
-                /// Source span
-                Span
-            ),
-            /// Unsigned integer literal
-            Number {
-                /// Source span
-                span: Span,
-                /// Value
-                value: u64,
+        let input = quote! {
+            #[extract_derive(Debug, PartialEq)]
+            #[derive(Clone, Debug, PartialEq)]
+            pub enum Token<Span> {
+                /// `+`
+                Plus(
+                    /// Source span
+                    Span
+                ),
+                /// Unsigned integer literal
+                Number {
+                    /// Source span
+                    span: Span,
+                    /// Value
+                    value: u64,
+                }
             }
-        }";
-        let input = TokenStream::from_str(source).unwrap();
+        };
 
         let mut types = HashSet::new();
         types.insert(ExtractType::Single);

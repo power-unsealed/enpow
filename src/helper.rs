@@ -110,6 +110,7 @@ pub enum VariantType {
 }
 
 pub struct VariantInfo {
+    pub docs: Vec<Attribute>,
     pub visibility: Visibility,
     pub var_type: VariantType,
     /// Variant identifier
@@ -119,7 +120,9 @@ pub struct VariantInfo {
     /// `Enum::Variant`
     pub full_path: Path,
     pub generics: Generics,
-    pub docs: Vec<Attribute>,
+    pub ref_generics: Generics,
+    pub ref_lifetime: Lifetime,
+    /// Identifiers of extracted types
     type_idents: SelfRefMut<Ident>,
     type_defs_cache: SelfRefMut<Option<TokenStream>>,
     data_types_cache: SelfRefMut<Option<TokenStream>>,
@@ -138,6 +141,12 @@ impl VariantInfo {
 
         // Build path
         let full_path: Path = syn::parse2(quote! { #enum_ident :: #identifier })?;
+
+        // Build type idents
+        let self_ident = format_ident!("{enum_ident}{identifier}");
+        let ref_ident = format_ident!("{enum_ident}{identifier}Ref");
+        let mut_ident = format_ident!("{enum_ident}{identifier}Mut");
+        let type_idents = SelfRefMut::new(self_ident, ref_ident, mut_ident);
 
         // Build a dummy type tuple with all types contained in the fields.
         // Then parse it and find out which generics were actually used in it.
@@ -161,20 +170,27 @@ impl VariantInfo {
         let ast: TypeTuple = syn::parse2(tokens)?;
         let generics = generics.filter_unused(&ast)?;
 
-        // Build type idents
-        let self_ident = format_ident!("{enum_ident}{identifier}");
-        let ref_ident = format_ident!("{enum_ident}{identifier}Ref");
-        let mut_ident = format_ident!("{enum_ident}{identifier}Mut");
+        // Add a lifetime to the generics
+        let mut ref_generics = generics.clone();
+        let lifetime_name = format!("'{}", type_idents.vself.to_string().to_snake_case());
+        let ref_lifetime = Lifetime::new(&lifetime_name, Span::call_site());
+        ref_generics
+            .params
+            .push(GenericParam::Lifetime(LifetimeDef::new(
+                ref_lifetime.clone(),
+            )));
 
         Ok(VariantInfo {
+            docs,
             visibility: parent.visibility.clone(),
             var_type,
             snake_case: identifier.to_string().to_snake_case(),
             full_path,
             identifier,
             generics,
-            docs,
-            type_idents: SelfRefMut::new(self_ident, ref_ident, mut_ident),
+            ref_generics,
+            ref_lifetime,
+            type_idents,
             type_defs_cache: SelfRefMut::new(None, None, None),
             data_types_cache: SelfRefMut::new(None, None, None),
             pattern_cache: None,
@@ -240,18 +256,6 @@ impl VariantInfo {
         }
     }
 
-    fn build_generics_with_ref_lt(&self) -> (Generics, Lifetime) {
-        // Add a lifetime to the generics
-        let mut generics = self.generics.clone();
-        let lifetime_name = format!("'{}", self.type_idents.vself.to_string().to_snake_case());
-        let lifetime = Lifetime::new(&lifetime_name, Span::call_site());
-        generics
-            .params
-            .push(GenericParam::Lifetime(LifetimeDef::new(lifetime.clone())));
-
-        (generics, lifetime)
-    }
-
     pub fn build_self_type_def(&mut self) -> TokenStream {
         cache_access!(
             self.type_defs_cache.vself,
@@ -262,7 +266,8 @@ impl VariantInfo {
 
     pub fn build_ref_type_def(&mut self) -> TokenStream {
         cache_access!(self.type_defs_cache.vref, {
-            let (generics, lifetime) = self.build_generics_with_ref_lt();
+            let generics = &self.ref_generics;
+            let lifetime = &self.ref_lifetime;
             self.build_type_def(&self.type_idents.vref, &generics, quote! { &#lifetime })
         })
         .clone()
@@ -270,7 +275,8 @@ impl VariantInfo {
 
     pub fn build_mut_type_def(&mut self) -> TokenStream {
         cache_access!(self.type_defs_cache.vmut, {
-            let (generics, lifetime) = self.build_generics_with_ref_lt();
+            let generics = &self.ref_generics;
+            let lifetime = &self.ref_lifetime;
             self.build_type_def(&self.type_idents.vmut, &generics, quote! { &#lifetime mut })
         })
         .clone()
@@ -302,18 +308,19 @@ impl VariantInfo {
 
     pub fn build_ref_type(&mut self) -> TokenStream {
         cache_access!(self.data_types_cache.vref, {
+            let lifetime = &self.ref_lifetime;
             match &self.var_type {
                 VariantType::Unit => quote! { () },
                 VariantType::Single(field) => {
                     let dtype = &field.data_type;
-                    quote! { & #dtype }
+                    quote! { &#lifetime #dtype }
                 }
                 VariantType::Unnamed(fields) => {
                     let types: Vec<_> = fields
                         .iter()
                         .map(|field| {
                             let dtype = &field.data_type;
-                            quote! { & #dtype }
+                            quote! { &#lifetime #dtype }
                         })
                         .collect();
                     quote! { ( #(#types),*, ) }
@@ -325,25 +332,26 @@ impl VariantInfo {
     }
 
     pub fn build_extracted_ref_type(&self) -> TokenStream {
-        let (_, gen_short, _) = self.generics.split_for_impl();
+        let (_, gen_short, _) = self.ref_generics.split_for_impl();
         let ident = &self.type_idents.vref;
         quote! { #ident #gen_short }
     }
 
     pub fn build_mut_type(&mut self) -> TokenStream {
         cache_access!(self.data_types_cache.vmut, {
+            let lifetime = &self.ref_lifetime;
             match &self.var_type {
                 VariantType::Unit => quote! { () },
                 VariantType::Single(field) => {
                     let dtype = &field.data_type;
-                    quote! { &mut #dtype }
+                    quote! { &#lifetime mut #dtype }
                 }
                 VariantType::Unnamed(fields) => {
                     let types: Vec<_> = fields
                         .iter()
                         .map(|field| {
                             let dtype = &field.data_type;
-                            quote! { &mut #dtype }
+                            quote! { &#lifetime mut #dtype }
                         })
                         .collect();
                     quote! { ( #(#types),*, ) }
@@ -355,7 +363,7 @@ impl VariantInfo {
     }
 
     pub fn build_extracted_mut_type(&self) -> TokenStream {
-        let (_, gen_short, _) = self.generics.split_for_impl();
+        let (_, gen_short, _) = self.ref_generics.split_for_impl();
         let ident = &self.type_idents.vmut;
         quote! { #ident #gen_short }
     }
@@ -404,7 +412,6 @@ impl VariantInfo {
             }
             VariantType::Named(fields) => {
                 let vars: Vec<_> = fields.iter().map(|field| &field.identifier).collect();
-
                 quote! { #ident { #(#vars),* } }
             }
         }
@@ -463,6 +470,7 @@ impl VariantInfo {
         let data_type = self.build_ref_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -471,7 +479,7 @@ impl VariantInfo {
         quote! {
             /// Returns a reference to the inner data, if the enum value is of the expected type,
             /// otherwise returns `None`.
-            #visibility fn #fn_ident(&self) -> Option< #data_type > {
+            #visibility fn #fn_ident<#lifetime>(&#lifetime self) -> Option< #data_type > {
                 match self {
                     #pattern => Some(#construction),
                     _ => None,
@@ -484,6 +492,7 @@ impl VariantInfo {
         let data_type = self.build_mut_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -492,7 +501,7 @@ impl VariantInfo {
         quote! {
             /// Returns a mutable reference to the inner data, if the enum value is of the expected
             /// type, otherwise returns `None`.
-            #visibility fn #fn_ident(&mut self) -> Option< #data_type > {
+            #visibility fn #fn_ident<#lifetime>(&#lifetime mut self) -> Option< #data_type > {
                 match self {
                     #pattern => Some(#construction),
                     _ => None,
@@ -524,6 +533,7 @@ impl VariantInfo {
         let data_type = self.build_ref_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -532,7 +542,10 @@ impl VariantInfo {
         quote! {
             /// Returns `true`, if the enum value is of the expected type and the given closure
             /// evalutates to `true`, otherwise returns `false`.
-            #visibility fn #fn_ident(&self, f: impl FnOnce(#data_type) -> bool) -> bool {
+            #visibility fn #fn_ident<#lifetime>(
+                &#lifetime self,
+                f: impl FnOnce(#data_type) -> bool
+            ) -> bool {
                 match self {
                     #pattern => f(#construction),
                     _ => false,
@@ -570,6 +583,7 @@ impl VariantInfo {
         let data_type = self.build_ref_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -582,7 +596,7 @@ impl VariantInfo {
         quote! {
             /// Returns a reference to the inner data, if the enum value is of the expected type,
             /// otherwise panics.
-            #visibility fn #fn_ident(&self) -> #data_type {
+            #visibility fn #fn_ident<#lifetime>(&#lifetime self) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!(#panic_msg),
@@ -595,6 +609,7 @@ impl VariantInfo {
         let data_type = self.build_mut_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -607,7 +622,7 @@ impl VariantInfo {
         quote! {
             /// Returns a mutable reference to the inner data, if the enum value is of the expected
             /// type, otherwise panics.
-            #visibility fn #fn_ident(&mut self) -> #data_type {
+            #visibility fn #fn_ident<#lifetime>(&#lifetime mut self) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!(#panic_msg),
@@ -683,6 +698,7 @@ impl VariantInfo {
         let data_type = self.build_ref_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -691,7 +707,7 @@ impl VariantInfo {
         quote! {
             /// Returns a reference to the inner data, if the enum is of the expected type,
             /// otherwise panics with the given error message.
-            #visibility fn #fn_ident(&self, msg: &str) -> #data_type {
+            #visibility fn #fn_ident<#lifetime>(&#lifetime self, msg: &str) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!("{}", msg),
@@ -704,6 +720,7 @@ impl VariantInfo {
         let data_type = self.build_mut_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
+        let lifetime = &self.ref_lifetime;
         let snake_case = &self.snake_case;
         let visibility = &self.visibility;
 
@@ -712,7 +729,7 @@ impl VariantInfo {
         quote! {
             /// Returns a mutable reference to the inner data, if the enum is of the expected type,
             /// otherwise panics with the given error message.
-            #visibility fn #fn_ident(&mut self, msg: &str) -> #data_type {
+            #visibility fn #fn_ident<#lifetime>(&#lifetime mut self, msg: &str) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!("{}", msg),
