@@ -190,10 +190,9 @@ if !errors.is_empty() {
 <summary>ℹ️ Click to reveal generated code</summary>
 
 ```rust
-/// A log entry
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
-    /// A simple note without context   
+    /// A simple note without context
     Note(
         /// Note's message
         String,
@@ -216,8 +215,9 @@ pub enum LogEntry<C: ToString + Clone> {
     },
 }
 
-/// An error message with error code and context
 #[allow(unused)]
+#[derive()]
+/// An error message with error code and context
 pub struct LogEntryError<C: ToString + Clone> {
     /// Error message
     pub message: String,
@@ -227,9 +227,9 @@ pub struct LogEntryError<C: ToString + Clone> {
     pub code: i16,
 }
 
-/// An error message with error code and context
 #[allow(unused)]
 #[derive(Clone, Copy)]
+/// An error message with error code and context
 pub struct LogEntryErrorRef<'log_entry_error, C: ToString + Clone> {
     /// Error message
     pub message: &'log_entry_error String,
@@ -239,8 +239,9 @@ pub struct LogEntryErrorRef<'log_entry_error, C: ToString + Clone> {
     pub code: &'log_entry_error i16,
 }
 
-/// An error message with error code and context
 #[allow(unused)]
+#[derive()]
+/// An error message with error code and context
 pub struct LogEntryErrorMut<'log_entry_error, C: ToString + Clone> {
     /// Error message
     pub message: &'log_entry_error mut String,
@@ -261,16 +262,19 @@ impl<C: ToString + Clone> LogEntry<C> {
             _ => false,
         }
     }
-
+    
     /// Returns `true`, if the enum value is of the expected type and the given closure
     /// evalutates to `true`, otherwise returns `false`.
-    pub fn is_note_and(&self, f: impl FnOnce(&String) -> bool) -> bool {
+    pub fn is_note_and<'log_entry_note>(
+        &'log_entry_note self,
+        f: impl FnOnce(&'log_entry_note String) -> bool,
+    ) -> bool {
         match self {
             LogEntry::Note(f0) => f(f0),
             _ => false,
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// panics.
     pub fn unwrap_note(self) -> String {
@@ -279,25 +283,27 @@ impl<C: ToString + Clone> LogEntry<C> {
             _ => panic!("Failed unwrapping to LogEntry::Note. Unexpected variant"),
         }
     }
-
+    
     /// Returns a reference to the inner data, if the enum value is of the expected type,
     /// otherwise panics.
-    pub fn unwrap_note_as_ref(&self) -> &String {
+    pub fn unwrap_note_as_ref<'log_entry_note>(&'log_entry_note self) -> &'log_entry_note String {
         match self {
             LogEntry::Note(f0) => f0,
             _ => panic!("Failed unwrapping to LogEntry::Note. Unexpected variant"),
         }
     }
-
+    
     /// Returns a mutable reference to the inner data, if the enum value is of the expected
     /// type, otherwise panics.
-    pub fn unwrap_note_as_mut(&mut self) -> &mut String {
+    pub fn unwrap_note_as_mut<'log_entry_note>(
+        &'log_entry_note mut self,
+    ) -> &'log_entry_note mut String {
         match self {
             LogEntry::Note(f0) => f0,
             _ => panic!("Failed unwrapping to LogEntry::Note. Unexpected variant"),
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// returns the given default value.
     pub fn unwrap_note_or(self, default: String) -> String {
@@ -306,7 +312,7 @@ impl<C: ToString + Clone> LogEntry<C> {
             _ => default,
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// returns the value that the given closure evaluated to.
     pub fn unwrap_note_or_else(self, f: impl FnOnce(Self) -> String) -> String {
@@ -315,7 +321,7 @@ impl<C: ToString + Clone> LogEntry<C> {
             some => f(some),
         }
     }
-
+    
     /// Returns `true`, if the enum value is of the expected type, otherwise returns
     /// `false`.
     pub fn is_warning(&self) -> bool {
@@ -324,16 +330,19 @@ impl<C: ToString + Clone> LogEntry<C> {
             _ => false,
         }
     }
-
+    
     /// Returns `true`, if the enum value is of the expected type and the given closure
     /// evalutates to `true`, otherwise returns `false`.
-    pub fn is_warning_and(&self, f: impl FnOnce((&String, &C)) -> bool) -> bool {
+    pub fn is_warning_and<'log_entry_warning>(
+        &'log_entry_warning self,
+        f: impl FnOnce((&'log_entry_warning String, &'log_entry_warning C)) -> bool,
+    ) -> bool {
         match self {
             LogEntry::Warning(f0, f1) => f((f0, f1)),
             _ => false,
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// panics.
     pub fn unwrap_warning(self) -> (String, C) {
@@ -342,25 +351,29 @@ impl<C: ToString + Clone> LogEntry<C> {
             _ => panic!("Failed unwrapping to LogEntry::Warning. Unexpected variant"),
         }
     }
-
+    
     /// Returns a reference to the inner data, if the enum value is of the expected type,
     /// otherwise panics.
-    pub fn unwrap_warning_as_ref(&self) -> (&String, &C) {
+    pub fn unwrap_warning_as_ref<'log_entry_warning>(
+        &'log_entry_warning self,
+    ) -> (&'log_entry_warning String, &'log_entry_warning C) {
         match self {
             LogEntry::Warning(f0, f1) => (f0, f1),
             _ => panic!("Failed unwrapping to LogEntry::Warning. Unexpected variant"),
         }
     }
-
+    
     /// Returns a mutable reference to the inner data, if the enum value is of the expected
     /// type, otherwise panics.
-    pub fn unwrap_warning_as_mut(&mut self) -> (&mut String, &mut C) {
+    pub fn unwrap_warning_as_mut<'log_entry_warning>(
+        &'log_entry_warning mut self,
+    ) -> (&'log_entry_warning mut String, &'log_entry_warning mut C) {
         match self {
             LogEntry::Warning(f0, f1) => (f0, f1),
             _ => panic!("Failed unwrapping to LogEntry::Warning. Unexpected variant"),
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// returns the given default value.
     pub fn unwrap_warning_or(self, default: (String, C)) -> (String, C) {
@@ -369,103 +382,121 @@ impl<C: ToString + Clone> LogEntry<C> {
             _ => default,
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// returns the value that the given closure evaluated to.
-    pub fn unwrap_warning_or_else(
-        self,
-        f: impl FnOnce(Self) -> (String, C),
-    ) -> (String, C) {
+    pub fn unwrap_warning_or_else(self, f: impl FnOnce(Self) -> (String, C)) -> (String, C) {
         match self {
             LogEntry::Warning(f0, f1) => (f0, f1),
             some => f(some),
         }
     }
-
+    
     /// Returns `true`, if the enum value is of the expected type, otherwise returns
     /// `false`.
     pub fn is_error(&self) -> bool {
         match self {
-            LogEntry::Error { message, context, code } => true,
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => true,
             _ => false,
         }
     }
-
+    
     /// Returns `true`, if the enum value is of the expected type and the given closure
     /// evalutates to `true`, otherwise returns `false`.
-    pub fn is_error_and(&self, f: impl FnOnce(LogEntryErrorRef<C>) -> bool) -> bool {
+    pub fn is_error_and<'log_entry_error>(
+        &'log_entry_error self,
+        f: impl FnOnce(LogEntryErrorRef<'log_entry_error, C>) -> bool,
+    ) -> bool {
         match self {
-            LogEntry::Error { message, context, code } => {
-                f(LogEntryErrorRef {
-                    message,
-                    context,
-                    code,
-                })
-            }
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => f(LogEntryErrorRef {
+                message,
+                context,
+                code,
+            }),
             _ => false,
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// panics.
     pub fn unwrap_error(self) -> LogEntryError<C> {
         match self {
-            LogEntry::Error { message, context, code } => {
-                LogEntryError {
-                    message,
-                    context,
-                    code,
-                }
-            }
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => LogEntryError {
+                message,
+                context,
+                code,
+            },
             _ => panic!("Failed unwrapping to LogEntry::Error. Unexpected variant"),
         }
     }
-
+    
     /// Returns a reference to the inner data, if the enum value is of the expected type,
     /// otherwise panics.
-    pub fn unwrap_error_as_ref(&self) -> LogEntryErrorRef<C> {
+    pub fn unwrap_error_as_ref<'log_entry_error>(
+        &'log_entry_error self,
+    ) -> LogEntryErrorRef<'log_entry_error, C> {
         match self {
-            LogEntry::Error { message, context, code } => {
-                LogEntryErrorRef {
-                    message,
-                    context,
-                    code,
-                }
-            }
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => LogEntryErrorRef {
+                message,
+                context,
+                code,
+            },
             _ => panic!("Failed unwrapping to LogEntry::Error. Unexpected variant"),
         }
     }
-
+    
     /// Returns a mutable reference to the inner data, if the enum value is of the expected
     /// type, otherwise panics.
-    pub fn unwrap_error_as_mut(&mut self) -> LogEntryErrorMut<C> {
+    pub fn unwrap_error_as_mut<'log_entry_error>(
+        &'log_entry_error mut self,
+    ) -> LogEntryErrorMut<'log_entry_error, C> {
         match self {
-            LogEntry::Error { message, context, code } => {
-                LogEntryErrorMut {
-                    message,
-                    context,
-                    code,
-                }
-            }
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => LogEntryErrorMut {
+                message,
+                context,
+                code,
+            },
             _ => panic!("Failed unwrapping to LogEntry::Error. Unexpected variant"),
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// returns the given default value.
     pub fn unwrap_error_or(self, default: LogEntryError<C>) -> LogEntryError<C> {
         match self {
-            LogEntry::Error { message, context, code } => {
-                LogEntryError {
-                    message,
-                    context,
-                    code,
-                }
-            }
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => LogEntryError {
+                message,
+                context,
+                code,
+            },
             _ => default,
         }
     }
-
+    
     /// Returns the inner data, if the enum value is of the expected type, otherwise
     /// returns the value that the given closure evaluated to.
     pub fn unwrap_error_or_else(
@@ -473,13 +504,15 @@ impl<C: ToString + Clone> LogEntry<C> {
         f: impl FnOnce(Self) -> LogEntryError<C>,
     ) -> LogEntryError<C> {
         match self {
-            LogEntry::Error { message, context, code } => {
-                LogEntryError {
-                    message,
-                    context,
-                    code,
-                }
-            }
+            LogEntry::Error {
+                message,
+                context,
+                code,
+            } => LogEntryError {
+                message,
+                context,
+                code,
+            },
             some => f(some),
         }
     }
@@ -584,7 +617,6 @@ if !errors.is_empty() {
 <summary>ℹ️ Click to reveal generated code</summary>
 
 ```rust
-/// A log entry
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
     /// A simple note without context
@@ -603,52 +635,62 @@ pub enum LogEntry<C: ToString + Clone> {
 impl<C: ToString + Clone> LogEntry<C> {
     /// Returns a reference to the inner data, if the enum value is of the expected type,
     /// otherwise returns `None`.
-    pub fn note_as_ref(&self) -> Option<&String> {
+    pub fn note_as_ref<'log_entry_note>(&'log_entry_note self) -> Option<&'log_entry_note String> {
         match self {
             LogEntry::Note(f0) => Some(f0),
             _ => None,
         }
     }
-
+    
     /// Returns a mutable reference to the inner data, if the enum value is of the expected
     /// type, otherwise returns `None`.
-    pub fn note_as_mut(&mut self) -> Option<&mut String> {
+    pub fn note_as_mut<'log_entry_note>(
+        &'log_entry_note mut self,
+    ) -> Option<&'log_entry_note mut String> {
         match self {
             LogEntry::Note(f0) => Some(f0),
             _ => None,
         }
     }
-
+    
     /// Returns a reference to the inner data, if the enum value is of the expected type,
     /// otherwise returns `None`.
-    pub fn warning_as_ref(&self) -> Option<&LogEntryWarning<C>> {
+    pub fn warning_as_ref<'log_entry_warning>(
+        &'log_entry_warning self,
+    ) -> Option<&'log_entry_warning LogEntryWarning<C>> {
         match self {
             LogEntry::Warning(f0) => Some(f0),
             _ => None,
         }
     }
-
+    
     /// Returns a mutable reference to the inner data, if the enum value is of the expected
     /// type, otherwise returns `None`.
-    pub fn warning_as_mut(&mut self) -> Option<&mut LogEntryWarning<C>> {
+    pub fn warning_as_mut<'log_entry_warning>(
+        &'log_entry_warning mut self,
+    ) -> Option<&'log_entry_warning mut LogEntryWarning<C>> {
         match self {
             LogEntry::Warning(f0) => Some(f0),
             _ => None,
         }
     }
-
+    
     /// Returns a reference to the inner data, if the enum value is of the expected type,
     /// otherwise returns `None`.
-    pub fn error_as_ref(&self) -> Option<&LogEntryError<C>> {
+    pub fn error_as_ref<'log_entry_error>(
+        &'log_entry_error self,
+    ) -> Option<&'log_entry_error LogEntryError<C>> {
         match self {
             LogEntry::Error(f0) => Some(f0),
             _ => None,
         }
     }
-
+    
     /// Returns a mutable reference to the inner data, if the enum value is of the expected
     /// type, otherwise returns `None`.
-    pub fn error_as_mut(&mut self) -> Option<&mut LogEntryError<C>> {
+    pub fn error_as_mut<'log_entry_error>(
+        &'log_entry_error mut self,
+    ) -> Option<&'log_entry_error mut LogEntryError<C>> {
         match self {
             LogEntry::Error(f0) => Some(f0),
             _ => None,
@@ -656,8 +698,8 @@ impl<C: ToString + Clone> LogEntry<C> {
     }
 }
 
-/// A warning with a given context
 #[derive(Clone)]
+/// A warning with a given context
 pub struct LogEntryWarning<C: ToString + Clone>(
     /// Warning's message
     pub String,
@@ -665,8 +707,8 @@ pub struct LogEntryWarning<C: ToString + Clone>(
     pub C,
 );
 
-/// An error message with error code and context
 #[derive(Clone)]
+/// An error message with error code and context
 pub struct LogEntryError<C: ToString + Clone> {
     /// Error message
     pub message: String,
