@@ -292,38 +292,38 @@ impl VariantInfo {
 mod tests {
     use crate::enpow::EnpowType;
     use proc_macro2::TokenStream;
-    use std::str::FromStr;
+    use quote::quote;
 
     #[test]
     fn enpow_wrong_target() {
-        let source = "struct A;";
-        let input = TokenStream::from_str(source).unwrap();
+        let input = quote! { struct A; };
         let result = super::generate(input, &[]);
         assert!(result.is_err());
     }
 
     #[test]
     fn enpow() {
-        let source = "
-        #[enpow_derive(Debug, PartialEq)]
-        #[derive(Clone, Debug, PartialEq)]
-        pub enum Token<'a, Span> {
-            /// `+`
-            Plus(
-                /// Source span
-                &'a Span
-            ),
-            /// Unsigned integer literal
-            Number {
-                /// Source span
-                span: &'a Span,
-                /// Value
-                value: u64,
+        let input = quote! {
+            #[enpow_derive(Debug, PartialEq)]
+            #[derive(Clone, Debug, PartialEq)]
+            pub enum Token<'a, Span> {
+                /// `+`
+                Plus(
+                    /// Source span
+                    &'a Span
+                ),
+                /// Unsigned integer literal
+                Number {
+                    /// Source span
+                    span: &'a Span,
+                    /// Value
+                    value: u64,
+                }
             }
-        }";
-        let input = TokenStream::from_str(source).unwrap();
-        let result =
-            super::generate(input, &[EnpowType::Variant, EnpowType::VariantAsRef]).unwrap();
+        };
+
+        let types = [EnpowType::Variant, EnpowType::VariantAsRef];
+        let result = super::generate(input, &types).unwrap();
 
         println!("{result}");
     }
