@@ -291,7 +291,6 @@ impl VariantInfo {
 #[cfg(test)]
 mod tests {
     use crate::enpow::EnpowType;
-    use proc_macro2::TokenStream;
     use quote::quote;
 
     #[test]
