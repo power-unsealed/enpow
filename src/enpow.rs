@@ -130,7 +130,6 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
     let ref_derives = quote! { #[derive(#(#ref_derives),*)] };
 
     let enum_ident = &parent.identifier;
-    let visibility = &parent.visibility;
     let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
     // Generate the output tokens, while preserving the span for the original enum, but pointing
@@ -144,7 +143,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         #[automatically_derived]
         #[allow(unused)]
         impl #gen_full #enum_ident #gen_short #gen_where {
-            #(#visibility #methods)*
+            #(#methods)*
         }
     };
 

@@ -18,7 +18,7 @@ mod helper;
 ///
 /// - `Var`
 ///     * `fn <variant>(self) -> Option<<inner>>`
-///     Return the inner data, if the enum value is of the expected type, otherwise returns
+///     Returns the inner data, if the enum value is of the expected type, otherwise returns
 ///     `None`.
 /// - `IsVar`
 ///     * `fn is_<variant>(&self) -> bool`
