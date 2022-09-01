@@ -6,314 +6,276 @@ EnPow is a procedural macro crate used to en**Pow**er user defined **En**ums wit
 
 Additionally, this crate allows to extract the data associated with each enum variant into separate structs, allowing for more compact code e.g. when designing an Abstract Syntax Tree. See the `extract` macro documentation for more details.
 
-It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as demonstrated in one of the following examples.
+It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as demonstrated in the following use case.
 
-# Usage Examples
+# Use Case
 
-The following examples demonstrate the separate usage of the macros `enpow` and `extract`, as well as their combined usage. See the macro's documentation for more details.
-
-## Using just `enpow`
+The following code describes a simple logging system with support for different log levels. We then create an example log and print all errors in it.
 
 ```rust
-use enpow::enpow;
-
-#[enpow(Var, VarAsRef)]
-#[enpow_derive(Debug, PartialEq)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token<Span> {
-    /// `+`
-    Plus(
-        /// Source span
-        Span
+/// A log entry
+#[derive(Clone)]
+pub enum LogEntry<C: ToString + Clone> {
+    /// A simple note without context
+    Note(
+        /// Note's message
+        String
     ),
-    /// Unsigned integer literal
-    Number {
-        /// Source span
-        span: Span,
-        /// Value
-        value: u64,
-    }
-}
-
-// Use the auto implementations
-assert_eq!(Token::Plus(3).plus(), Some(3));
-assert_eq!(Token::Plus(7).number(), None);
-assert_eq!(Token::Number { span: 0, value: 42 }.number().unwrap().span, 0);
-
-let mut num = Token::Number { span: 10, value: 7 };
-*num.number_as_mut().unwrap().span = 20;
-assert_eq!(num.number(), Some(TokenNumber { span: 20, value: 7 }))
-```
-
-<details>
-<summary>See generated code</summary>
-
-```rust
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token<Span> {
-    /// `+`
-    Plus(
-        /// Source span
-        Span
+    /// A warning with a given context
+    Warning(
+        /// Warning's message
+        String,
+        /// Context of the warning
+        C
     ),
-    /// Unsigned integer literal
-    Number {
-        /// Source span
-        span: Span,
-        /// Value
-        value: u64,
+    /// An error message with error code and context
+    Error {
+        /// Error message
+        message: String,
+        /// Context of the error
+        context: C,
+        /// Error code
+        code: i16,
+    },
+}
+
+/// Application log for a certain context type
+pub struct Log<C: ToString + Clone> {
+    /// Log entries
+    entries: Vec<LogEntry<C>>,
+}
+
+impl<C: ToString + Clone> Log<C> {
+    /// Collects all entries of type `LogEntry::Error` from the log
+    pub fn get_errors(&self) -> Vec<LogEntry<C>> {
+        self.entries.iter()
+            .filter(|entry| match entry {
+                LogEntry::Error { .. } => true,
+                _ => false,
+            })
+            .cloned()
+            .collect()
     }
 }
 
-#[allow(unused)]
-#[derive(Debug, PartialEq)]
-/// Unsigned integer literal
-pub struct TokenNumber<Span> {
-    /// Source span
-    pub span: Span,
-    /// Value
-    pub value: u64,
-}
+/// Line number in source
+type Line = usize;
 
-#[allow(unused)]
-#[derive(Debug, PartialEq, Clone, Copy)]
-/// Unsigned integer literal
-pub struct TokenNumberRef<'token_number, Span> {
-    /// Source span
-    pub span: &'token_number Span,
-    /// Value
-    pub value: &'token_number u64,
-}
+// Create a sample log
+let log = Log { entries: vec![
+    LogEntry::Note("All fine 😊".into()),
+    LogEntry::Warning("There might be an issue here...".into(), 4),
+    LogEntry::Error {
+        message: "There _was_ an issue 😖".into(),
+        context: 4,
+        code: -1,
+    },
+    LogEntry::Error {
+        message: "Follow up".into(),
+        context: 12,
+        code: -7,
+    },
+] };
 
-#[allow(unused)]
-#[derive(Debug, PartialEq)]
-/// Unsigned integer literal
-pub struct TokenNumberMut<'token_number, Span> {
-    /// Source span
-    pub span: &'token_number mut Span,
-    /// Value
-    pub value: &'token_number mut u64,
-}
+// Get and print all errors
+let errors = log.get_errors();
+if !errors.is_empty() {
+    eprintln!("Failed for the following reasons:");
 
-#[automatically_derived]
-#[allow(unused)]
-impl<Span> Token<Span> {
-    pub fn plus(self) -> Option<Span> {
-        match self {
-            Token::Plus(f0) => Some(f0),
-            _ => None,
-        }
-    }
-
-    pub fn plus_as_ref(&self) -> Option<&Span> {
-        match self {
-            Token::Plus(f0) => Some(f0),
-            _ => None,
-        }
-    }
-
-    pub fn plus_as_mut(&mut self) -> Option<&mut Span> {
-        match self {
-            Token::Plus(f0) => Some(f0),
-            _ => None,
-        }
-    }
-
-    pub fn number(self) -> Option<TokenNumber<Span>> {
-        match self {
-            Token::Number { span, value } => Some(TokenNumber { span, value }),
-            _ => None,
-        }
-    }
-
-    pub fn number_as_ref(&self) -> Option<TokenNumberRef<Span>> {
-        match self {
-            Token::Number { span, value } => Some(TokenNumberRef { span, value }),
-            _ => None,
-        }
-    }
-
-    pub fn number_as_mut(&mut self) -> Option<TokenNumberMut<Span>> {
-        match self {
-            Token::Number { span, value } => Some(TokenNumberMut { span, value }),
-            _ => None,
+    for error in errors {
+        match error {
+            LogEntry::Error { message, context: line, code } => {
+                eprintln!("Error {code} at {line}: {message}");
+            }
+            _ => panic!("Expected to find a LogEntry::Error"),
         }
     }
 }
-
-// Use the auto implementations
-assert_eq!(Token::Plus(3).plus(), Some(3));
-assert_eq!(Token::Plus(7).number(), None);
-assert_eq!(Token::Number { span: 0, value: 42 }.number().unwrap().span, 0);
-
-let mut num = Token::Number { span: 10, value: 7 };
-*num.number_as_mut().unwrap().span = 20;
-assert_eq!(num.number(), Some(TokenNumber { span: 20, value: 7 }))
 ```
-</details>
 
-## Using just `extract`
+This code works, but it is a bit wordy having to pattern match against the specific variant of each log entry every time.
+
+## Using `enpow`
+
+Here comes the `enpow` macro into play. It can generate some helper methods that should make our code more concise. We specifically make use of the `is_<variant>()` (keyword `IsVar`) and `unwrap_<variant>()` (keyword `UnwrapVar`) methods.
 
 ```rust
-use enpow::extract;
+use enpow::enpow; // ℹ️
 
-#[extract(All)]
-#[extract_derive(Clone, Debug, PartialEq)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token<Span> {
-    /// `+`
-    Plus(
-        /// Source span
-        Span
-    ),
-    /// Unsigned integer literal
-    Number {
-        /// Source span
-        span: Span,
-        /// Value
-        value: u64,
+/// A log entry
+#[enpow(IsVar, UnwrapVar)] // ℹ️
+#[derive(Clone)]
+pub enum LogEntry<C: ToString + Clone> {
+    // ✂ unchanged
+#   /// A simple note without context
+#   Note(
+#       /// Note's message
+#       String
+#   ),
+#   /// A warning with a given context
+#   Warning(
+#       /// Warning's message
+#       String,
+#       /// Context of the warning
+#       C
+#   ),
+#   /// An error message with error code and context
+#   Error {
+#       /// Error message
+#       message: String,
+#       /// Context of the error
+#       context: C,
+#       /// Error code
+#       code: i16,
+#   },
+}
+
+/// Application log for a certain context type
+pub struct Log<C: ToString + Clone> {
+    /// Log entries
+    entries: Vec<LogEntry<C>>,
+}
+
+impl<C: ToString + Clone> Log<C> {
+    /// Collects all entries of type `LogEntry::Error` from the log
+    pub fn get_errors(&self) -> Vec<LogEntry<C>> {
+        self.entries.iter()
+            .filter(|entry| entry.is_error()) // ℹ️
+            .cloned()
+            .collect()
     }
 }
 
-// Use Debug and PartialEq
-assert_eq!(TokenPlus((2,3)), TokenPlus((2,3)));
-assert_eq!(
-    TokenNumber { span: (0, 4), value: 1024 },
-    TokenNumber { span: (0, 4), value: 1024 }
-);
+/// Line number in source
+type Line = usize;
+
+// Create a sample log
+let log = Log { entries: vec![
+    // ✂ unchanged
+#   LogEntry::Note("All fine 😊".into()),
+#   LogEntry::Warning("There might be an issue here...".into(), 4),
+#   LogEntry::Error {
+#       message: "There _was_ an issue 😖".into(),
+#       context: 4,
+#       code: -1,
+#   },
+#   LogEntry::Error {
+#       message: "Follow up".into(),
+#       context: 12,
+#       code: -7,
+#   },
+] };
+
+// Get and print all errors
+let errors = log.get_errors();
+if !errors.is_empty() {
+    eprintln!("Failed for the following reasons:");
+
+    for error in errors {
+        let error = error.unwrap_error();  // ℹ️
+        eprintln!("Error {} at {}: {}", error.code, error.context, error.message);
+    }
+}
 ```
 
-<details>
-<summary>See generated code</summary>
+Even though this code is already more concise, there is still a rough edge. When collecting all the errors, they still are returned as `Vec<LogEntry>` with no guarantee by the type system that this collection would actually contain only errors. We can solve this problem by extracting the associated data of the `LogEntry::Error` variant into a separate struct.
+
+## Using `extract`
+
+Here, the `extract` macro comes into play, which does this automatically for us. We tell the macro to do the extraction for every variant with more than one unnamed field (keyword `Unnamed`) or with named fields (keyword `Named`). This will automatically change our two affected variants into `LogEntry::Warning(LogEntryWarning<C>)` and `LogEntry::Error(LogEntryError<C>)`. We can then use the newly generated type `LogEntryError<C>` to guarantee that actually only errors are returned by `get_errors()`. Note, how the construction of the log entries changes, even though the enum code was not changed by hand.
+
+Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `extract_derive(Clone)` attribute.
+
+> ⚠️ When combining both macros, `extract` must be placed _before_ `enpow` for latter to work correctly.
 
 ```rust
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token<Span> {
-    /// `+`
-    Plus(TokenPlus<Span>),
-    /// Unsigned integer literal
-    Number(TokenNumber<Span>),
+use enpow::{enpow, extract}; // ℹ️
+
+/// A log entry
+#[extract(Unnamed, Named)]   // ℹ️
+#[extract_derive(Clone)]     // ℹ️
+#[enpow(VarAsRef, UnwrapVar)]
+#[derive(Clone)]
+pub enum LogEntry<C: ToString + Clone> {
+    // ✂ unchanged
+#   /// A simple note without context
+#   Note(
+#       /// Note's message
+#       String
+#   ),
+#   /// A warning with a given context
+#   Warning(
+#       /// Warning's message
+#       String,
+#       /// Context of the warning
+#       C
+#   ),
+#   /// An error message with error code and context
+#   Error {
+#       /// Error message
+#       message: String,
+#       /// Context of the error
+#       context: C,
+#       /// Error code
+#       code: i16,
+#   },
 }
 
-#[derive(Clone, Debug, PartialEq)]
-/// `+`
-pub struct TokenPlus<Span>(
-    /// Source span
-    pub Span
-);
-
-#[derive(Clone, Debug, PartialEq)]
-/// Unsigned integer literal
-pub struct TokenNumber<Span> {
-    /// Source span
-    pub span: Span,
-    /// Value
-    pub value: u64,
+/// Application log for a certain context type
+pub struct Log<C: ToString + Clone> {
+    /// Log entries
+    entries: Vec<LogEntry<C>>,
 }
 
-// Use Debug and PartialEq
-assert_eq!(TokenPlus((2,3)), TokenPlus((2,3)));
-assert_eq!(
-    TokenNumber { span: (0, 4), value: 1024 },
-    TokenNumber { span: (0, 4), value: 1024 }
-);
+impl<C: ToString + Clone> Log<C> {
+    /// Collects all entries of type `LogEntry::Error` from the log
+    pub fn get_errors(&self) -> Vec<LogEntryError<C>> { // ℹ️
+        self.entries.iter()
+            .filter_map(|entry| entry.error_as_ref())   // ℹ️
+            .cloned()
+            .collect()
+    }
+}
+
+/// Line number in source
+type Line = usize;
+
+// Create a sample log
+let log = Log { entries: vec![
+    LogEntry::Note("All fine 😊".into()),
+    LogEntry::Warning(LogEntryWarning( // ℹ️
+        "There might be an issue here 🤔".into(),
+        4,
+    )),
+    LogEntry::Error(LogEntryError { // ℹ️
+        message: "There _was_ an issue 😖".into(),
+        context: 4,
+        code: -1,
+    }),
+    LogEntry::Error(LogEntryError { // ℹ️
+        message: "Follow up".into(),
+        context: 12,
+        code: -7,
+    }),
+] };
+
+// Get and print all errors
+let errors = log.get_errors();
+if !errors.is_empty() {
+    eprintln!("Failed for the following reasons:");
+
+    for error in errors {
+        // ℹ️
+        eprintln!("Error {} at {}: {}", error.code, error.context, error.message);
+    }
+}
 ```
-</details>
 
-## Combining `extract` and `enpow`
-
-```rust
-use enpow::{enpow, extract};
-
-#[extract(Named)]
-#[extract_derive(Clone, Debug, PartialEq)]
-#[enpow(IsVar)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token<Span> {
-    /// `+`
-    Plus(
-        /// Source span
-        Span
-    ),
-    /// Unsigned integer literal
-    Number {
-        /// Source span
-        span: Span,
-        /// Value
-        value: u64,
-    }
-}
-
-// Use the auto implementations
-let token = Token::Number(TokenNumber { span: (0, 3), value: 1024 });
-assert!(token.is_number_and(|num: &TokenNumber<_>| num.value == 1024));
-```
-
-<details>
-<summary>See generated code</summary>
-
-```rust
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token<Span> {
-    /// `+`
-    Plus(
-        /// Source span
-        Span
-    ),
-    /// Unsigned integer literal
-    Number(TokenNumber<Span>),
-}
-
-#[automatically_derived]
-#[allow(unused)]
-impl<Span> Token<Span> {
-    pub fn is_plus(&self) -> bool {
-        match self {
-            Token::Plus(f0) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_plus_and(&self, f: impl FnOnce(&Span) -> bool) -> bool {
-        match self {
-            Token::Plus(f0) => f(f0),
-            _ => false,
-        }
-    }
-
-    pub fn is_number(&self) -> bool {
-        match self {
-            Token::Number(f0) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_number_and(&self, f: impl FnOnce(&TokenNumber<Span>) -> bool) -> bool {
-        match self {
-            Token::Number(f0) => f(f0),
-            _ => false,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-/// Unsigned integer literal
-pub struct TokenNumber<Span> {
-    /// Source span
-    pub span: Span,
-    /// Value
-    pub value: u64,
-}
-
-// Use the auto implementations
-let token = Token::Number(TokenNumber { span: (0, 3), value: 1024 });
-assert!(token.is_number_and(|num: &TokenNumber<_>| num.value == 1024));
-```
-</details>
+This was just a quick introductory example for understanding the use and usage of this crate. See the macros' documentation for more details.
 
 # Inspiration
 
-While the first plan for this crate was limited to simple `unwrap_as` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
+While the first plan for this crate was limited to simple `unwrap` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
 
 # Contribution
 
