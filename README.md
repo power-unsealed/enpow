@@ -186,7 +186,7 @@ Here, the `extract` macro comes into play, which does this automatically for us.
 
 Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `extract_derive(Clone)` attribute.
 
-> ⚠️ When combining both macros, `extract` must be placed _before_ `enpow` for latter to work correctly.
+> ⚠️ When combining both macros, `enpow` must be placed _after_ `extract` to work correctly. Also, the normal `derive` must be placed _after_ `extract`;
 
 ```rust
 use enpow::{enpow, extract}; // ℹ️
@@ -195,7 +195,7 @@ use enpow::{enpow, extract}; // ℹ️
 #[extract(Unnamed, Named)]   // ℹ️
 #[extract_derive(Clone)]     // ℹ️
 #[enpow(VarAsRef, UnwrapVar)]
-#[derive(Clone)]             // derive must come after extract
+#[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
     // ✂ unchanged
 #   /// A simple note without context
