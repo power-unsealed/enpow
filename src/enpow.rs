@@ -184,8 +184,8 @@ impl EnpowType {
             EnpowType::Variant => false,
             EnpowType::IsVariant => true,
             EnpowType::VariantAsRef => true,
-            EnpowType::UnwrapVariant => false,
-            EnpowType::ExpectVariant => false,
+            EnpowType::UnwrapVariant => true,
+            EnpowType::ExpectVariant => true,
         }
     }
 
@@ -194,8 +194,8 @@ impl EnpowType {
             EnpowType::Variant => false,
             EnpowType::IsVariant => false,
             EnpowType::VariantAsRef => true,
-            EnpowType::UnwrapVariant => false,
-            EnpowType::ExpectVariant => false,
+            EnpowType::UnwrapVariant => true,
+            EnpowType::ExpectVariant => true,
         }
     }
 }
