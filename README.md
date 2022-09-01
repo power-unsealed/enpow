@@ -313,7 +313,7 @@ assert!(token.is_number_and(|num: &TokenNumber<_>| num.value == 1024));
 
 # Inspiration
 
-While the first plan for this crate was limited to simple `unwrap_as` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as limited alternative to this crate.
+While the first plan for this crate was limited to simple `unwrap_as` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
 
 # Contribution
 
