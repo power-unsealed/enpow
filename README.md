@@ -684,11 +684,18 @@ This was just a quick introductory example for understanding the use and usage o
 
 While the first plan for this crate was limited to simple `unwrap` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
 
-# Contribution
+<br/>
+
+---
+
+<br/>
+
+#### Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as below, without any additional terms or conditions.
 
-# License
+
+#### License
 
 &copy; 2022 Florian Köhler.
 
@@ -699,6 +706,6 @@ This project is licensed at your option under either of
 
 The [SPDX](https://spdx.dev) license identifier for this project is `MIT OR Apache-2.0`.
 
----
+<br/>
 
 Licensing derived from [arnavyc](https://github.com/arnavyc)/[dual-licensed-mit-apache](https://github.com/arnavyc/dual-licensed-mit-apache)
