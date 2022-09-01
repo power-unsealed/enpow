@@ -434,16 +434,23 @@ impl VariantInfo {
         .clone()
     }
 
+    /////////////
+    // Methods //
+    /////////////
+
     pub fn build_variant(&mut self) -> TokenStream {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = Ident::new(&snake_case, Span::call_site());
 
         quote! {
-            fn #fn_ident(self) -> Option< #data_type > {
+            /// Returns the inner data, if the enum value is of the expected type, otherwise
+            /// returns `None`.
+            #visibility fn #fn_ident(self) -> Option< #data_type > {
                 match self {
                     #pattern => Some(#construction),
                     _ => None,
@@ -457,11 +464,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("{snake_case}_as_ref");
 
         quote! {
-            fn #fn_ident(&self) -> Option< #data_type > {
+            /// Returns a reference to the inner data, if the enum value is of the expected type,
+            /// otherwise returns `None`.
+            #visibility fn #fn_ident(&self) -> Option< #data_type > {
                 match self {
                     #pattern => Some(#construction),
                     _ => None,
@@ -475,11 +485,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("{snake_case}_as_mut");
 
         quote! {
-            fn #fn_ident(&mut self) -> Option< #data_type > {
+            /// Returns a mutable reference to the inner data, if the enum value is of the expected
+            /// type, otherwise returns `None`.
+            #visibility fn #fn_ident(&mut self) -> Option< #data_type > {
                 match self {
                     #pattern => Some(#construction),
                     _ => None,
@@ -491,11 +504,14 @@ impl VariantInfo {
     pub fn build_is(&mut self) -> TokenStream {
         let pattern = self.build_match_pattern();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("is_{snake_case}");
 
         quote! {
-            fn #fn_ident(&self) -> bool {
+            /// Returns `true`, if the enum value is of the expected type, otherwise returns
+            /// `false`.
+            #visibility fn #fn_ident(&self) -> bool {
                 match self {
                     #pattern => true,
                     _ => false,
@@ -509,11 +525,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("is_{snake_case}_and");
 
         quote! {
-            fn #fn_ident(&self, f: impl FnOnce(#data_type) -> bool) -> bool {
+            /// Returns `true`, if the enum value is of the expected type and the given closure
+            /// evalutates to `true`, otherwise returns `false`.
+            #visibility fn #fn_ident(&self, f: impl FnOnce(#data_type) -> bool) -> bool {
                 match self {
                     #pattern => f(#construction),
                     _ => false,
@@ -527,6 +546,7 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("unwrap_{snake_case}");
         let panic_msg = format!(
@@ -535,7 +555,9 @@ impl VariantInfo {
         );
 
         quote! {
-            fn #fn_ident(self) -> #data_type {
+            /// Returns the inner data, if the enum value is of the expected type, otherwise
+            /// panics.
+            #visibility fn #fn_ident(self) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!(#panic_msg),
@@ -549,6 +571,7 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("unwrap_{snake_case}_as_ref");
         let panic_msg = format!(
@@ -557,7 +580,9 @@ impl VariantInfo {
         );
 
         quote! {
-            fn #fn_ident(&self) -> #data_type {
+            /// Returns a reference to the inner data, if the enum value is of the expected type,
+            /// otherwise panics.
+            #visibility fn #fn_ident(&self) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!(#panic_msg),
@@ -571,6 +596,7 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("unwrap_{snake_case}_as_mut");
         let panic_msg = format!(
@@ -579,7 +605,9 @@ impl VariantInfo {
         );
 
         quote! {
-            fn #fn_ident(&mut self) -> #data_type {
+            /// Returns a mutable reference to the inner data, if the enum value is of the expected
+            /// type, otherwise panics.
+            #visibility fn #fn_ident(&mut self) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!(#panic_msg),
@@ -593,11 +621,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("unwrap_{snake_case}_or");
 
         quote! {
-            fn #fn_ident(self, default: #data_type) -> #data_type {
+            /// Returns the inner data, if the enum value is of the expected type, otherwise
+            /// returns the given default value.
+            #visibility fn #fn_ident(self, default: #data_type) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => default,
@@ -611,11 +642,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("unwrap_{snake_case}_or_else");
 
         quote! {
-            fn #fn_ident(self, f: impl FnOnce(Self) -> #data_type) -> #data_type {
+            /// Returns the inner data, if the enum value is of the expected type, otherwise
+            /// returns the value that the given closure evaluated to.
+            #visibility fn #fn_ident(self, f: impl FnOnce(Self) -> #data_type) -> #data_type {
                 match self {
                     #pattern => #construction,
                     some => f(some),
@@ -629,11 +663,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("expect_{snake_case}");
 
         quote! {
-            fn #fn_ident(self, msg: &str) -> #data_type {
+            /// Returns the inner data, if the enum is of the expected type, otherwise panics with
+            /// the given error message.
+            #visibility fn #fn_ident(self, msg: &str) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!("{}", msg),
@@ -647,11 +684,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("expect_{snake_case}_as_ref");
 
         quote! {
-            fn #fn_ident(&self, msg: &str) -> #data_type {
+            /// Returns a reference to the inner data, if the enum is of the expected type,
+            /// otherwise panics with the given error message.
+            #visibility fn #fn_ident(&self, msg: &str) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!("{}", msg),
@@ -665,11 +705,14 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let snake_case = &self.snake_case;
+        let visibility = &self.visibility;
 
         let fn_ident = format_ident!("expect_{snake_case}_as_mut");
 
         quote! {
-            fn #fn_ident(&mut self, msg: &str) -> #data_type {
+            /// Returns a mutable reference to the inner data, if the enum is of the expected type,
+            /// otherwise panics with the given error message.
+            #visibility fn #fn_ident(&mut self, msg: &str) -> #data_type {
                 match self {
                     #pattern => #construction,
                     _ => panic!("{}", msg),
