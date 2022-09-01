@@ -153,6 +153,7 @@ pub fn enpow(
 /// - `Single`: Extracts variants with a single unnamed field into tuple structs.
 /// - `Unnamed`: Extracts variants with multiple unnamed fields into tuple structs.
 /// - `Named`: Extracts variants with named fields into structs.
+/// - `All`: Extracts all variants into structs.
 ///
 /// This example will extract all variants with multiple unnamed fields or named fields into
 /// separate structs.
