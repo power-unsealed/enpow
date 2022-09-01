@@ -72,7 +72,7 @@ type Line = usize;
 // Create a sample log
 let log = Log { entries: vec![
     LogEntry::Note("All fine 😊".into()),
-    LogEntry::Warning("There might be an issue here...".into(), 4),
+    LogEntry::Warning("There might be an issue here 🤔".into(), 4),
     LogEntry::Error {
         message: "There _was_ an issue 😖".into(),
         context: 4,
@@ -161,7 +161,7 @@ type Line = usize;
 let log = Log { entries: vec![
     // ✂ unchanged
 #   LogEntry::Note("All fine 😊".into()),
-#   LogEntry::Warning("There might be an issue here...".into(), 4),
+#   LogEntry::Warning("There might be an issue here 🤔".into(), 4),
 #   LogEntry::Error {
 #       message: "There _was_ an issue 😖".into(),
 #       context: 4,
