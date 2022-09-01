@@ -77,21 +77,21 @@ mod helper;
 ///         v6: String,
 ///     },
 /// }
-/// 
+///
 /// // fn <variant>()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).v4(), Some((192, 168, 0, 1)));
 /// assert_eq!(IpAddress::V6("::1".into()).v6(), Some("::1".into()));
 /// assert_eq!(IpAddress::None.multi(), None);
-/// 
+///
 /// // fn is_<variant>()
 /// assert_eq!(IpAddress::None.is_none(), true);
 /// assert_eq!(IpAddress::V6("::1".into()).is_v4(), false);
-/// 
+///
 /// // fn is_<variant>_and()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).is_v4_and(|ip| *ip.0 == 192), true);
 /// assert_eq!(IpAddress::V6("::1".into()).is_v6_and(|ip| *ip == "::"), false);
 /// assert_eq!(IpAddress::None.is_v4_and(|_| true), false);
-/// 
+///
 /// // fn <variant>_as_ref()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).v4_as_ref(), Some((&192, &168, &0, &1)));
 /// assert_eq!(
@@ -99,54 +99,54 @@ mod helper;
 ///     Some(IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into() })
 /// );
 /// assert_eq!(IpAddress::V6("::1".into()).none_as_ref(), None);
-/// 
+///
 /// // fn <variant>_as_mut()
 /// let mut ip = IpAddress::V4(192, 168, 0, 1);
 /// if let Some(v4) = ip.v4_as_mut() {
 ///     *v4.3 = 2;
 /// }
 /// assert_eq!(ip, IpAddress::V4(192, 168, 0, 2));
-/// 
+///
 /// // fn unwrap_<variant>()
 /// assert_eq!(IpAddress::V6("::1".into()).unwrap_v6(), "::1".to_owned());
-/// 
+///
 /// // fn unwrap_<variant>_as_ref()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).unwrap_v4_as_ref(), (&192, &168, &0, &1));
-/// 
+///
 /// // fn unwrap_<variant>_as_mut()
 /// let mut ip = IpAddress::V4(192, 168, 0, 1);
 /// *ip.unwrap_v4_as_mut().3 = 2;
 /// assert_eq!(ip, IpAddress::V4(192, 168, 0, 2));
-/// 
+///
 /// // fn unwrap_<variant>_or()
 /// assert_eq!(IpAddress::V6("::1".into()).unwrap_v6_or("::".into()), "::1".to_owned());
 /// assert_eq!(IpAddress::V4(192, 168, 0, 2).unwrap_v6_or("::".into()), "::".to_owned());
-/// 
+///
 /// // fn unwrap_<variant>_or_else()
 /// assert_eq!(IpAddress::None.unwrap_v4_or_else(|_| (0, 0, 0, 0)), (0, 0, 0, 0));
 /// assert_eq!(
 ///     IpAddress::V6("::1".into()).unwrap_v6_or_else(|_| unreachable!()),
 ///     "::1".to_owned()
 /// );
-/// 
+///
 /// // fn expect_<variant>()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).expect_v4("Expected V4"), (192, 168, 0, 1));
-/// 
+///
 /// // fn unwrap_<variant>_as_ref()
 /// assert_eq!(
 ///     IpAddress::V6("::1".into()).expect_v6_as_ref("Unexpected variant"),
 ///     &"::1".to_owned()
 /// );
-/// 
+///
 /// // fn unwrap_<variant>_as_mut()
 /// let mut ip = IpAddress::V6("::".into());
 /// ip.expect_v6_as_mut("Expected V6").push('1');
 /// assert_eq!(ip, IpAddress::V6("::1".into()));
 /// ```
-/// 
+///
 /// <details>
 /// <summary>ℹ️ Click to reveal generated code</summary>
-/// 
+///
 /// ```rust
 /// #[derive(Debug, PartialEq)]
 /// enum IpAddress {
@@ -155,14 +155,14 @@ mod helper;
 ///     V6(String),
 ///     Multi { v4: (u8, u8, u8, u8), v6: String },
 /// }
-/// 
+///
 /// #[allow(unused)]
 /// #[derive(Debug, PartialEq)]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
 ///     pub v6: String,
 /// }
-/// 
+///
 /// #[allow(unused)]
 /// #[derive(Debug, PartialEq)]
 /// #[derive(Clone, Copy)]
@@ -170,14 +170,14 @@ mod helper;
 ///     pub v4: &'ip_address_multi (u8, u8, u8, u8),
 ///     pub v6: &'ip_address_multi String,
 /// }
-/// 
+///
 /// #[allow(unused)]
 /// #[derive(Debug, PartialEq)]
 /// struct IpAddressMultiMut<'ip_address_multi> {
 ///     pub v4: &'ip_address_multi mut (u8, u8, u8, u8),
 ///     pub v6: &'ip_address_multi mut String,
 /// }
-/// 
+///
 /// #[automatically_derived]
 /// #[allow(unused)]
 /// impl IpAddress {
@@ -189,7 +189,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise returns `None`.
 ///     fn none_as_ref(&self) -> Option<()> {
@@ -198,7 +198,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise returns `None`.
 ///     fn none_as_mut(&mut self) -> Option<()> {
@@ -207,7 +207,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// panics.
 ///     fn unwrap_none(self) -> () {
@@ -216,7 +216,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::None. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise panics.
 ///     fn unwrap_none_as_ref(&self) -> () {
@@ -225,7 +225,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::None. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise panics.
 ///     fn unwrap_none_as_mut(&mut self) -> () {
@@ -234,7 +234,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::None. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the given default value.
 ///     fn unwrap_none_or(self, default: ()) -> () {
@@ -243,7 +243,7 @@ mod helper;
 ///             _ => default,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the value that the given closure evaluated to.
 ///     fn unwrap_none_or_else(self, f: impl FnOnce(Self) -> ()) -> () {
@@ -252,7 +252,7 @@ mod helper;
 ///             some => f(some),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum is of the expected type, otherwise panics with
 ///     /// the given error message.
 ///     fn expect_none(self, msg: &str) -> () {
@@ -261,7 +261,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_none_as_ref(&self, msg: &str) -> () {
@@ -270,7 +270,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_none_as_mut(&mut self, msg: &str) -> () {
@@ -279,7 +279,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type, otherwise returns
 ///     /// `false`.
 ///     fn is_none(&self) -> bool {
@@ -288,7 +288,7 @@ mod helper;
 ///             _ => false,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type and the given closure
 ///     /// evalutates to `true`, otherwise returns `false`.
 ///     fn is_none_and(&self, f: impl FnOnce(()) -> bool) -> bool {
@@ -306,7 +306,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise returns `None`.
 ///     fn v4_as_ref(&self) -> Option<(&u8, &u8, &u8, &u8)> {
@@ -315,7 +315,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise returns `None`.
 ///     fn v4_as_mut(&mut self) -> Option<(&mut u8, &mut u8, &mut u8, &mut u8)> {
@@ -324,7 +324,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// panics.
 ///     fn unwrap_v4(self) -> (u8, u8, u8, u8) {
@@ -333,7 +333,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::V4. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise panics.
 ///     fn unwrap_v4_as_ref(&self) -> (&u8, &u8, &u8, &u8) {
@@ -342,7 +342,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::V4. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise panics.
 ///     fn unwrap_v4_as_mut(&mut self) -> (&mut u8, &mut u8, &mut u8, &mut u8) {
@@ -351,7 +351,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::V4. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the given default value.
 ///     fn unwrap_v4_or(self, default: (u8, u8, u8, u8)) -> (u8, u8, u8, u8) {
@@ -360,7 +360,7 @@ mod helper;
 ///             _ => default,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the value that the given closure evaluated to.
 ///     fn unwrap_v4_or_else(
@@ -372,7 +372,7 @@ mod helper;
 ///             some => f(some),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum is of the expected type, otherwise panics with
 ///     /// the given error message.
 ///     fn expect_v4(self, msg: &str) -> (u8, u8, u8, u8) {
@@ -381,7 +381,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_v4_as_ref(&self, msg: &str) -> (&u8, &u8, &u8, &u8) {
@@ -390,7 +390,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_v4_as_mut(&mut self, msg: &str) -> (&mut u8, &mut u8, &mut u8, &mut u8) {
@@ -399,7 +399,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type, otherwise returns
 ///     /// `false`.
 ///     fn is_v4(&self) -> bool {
@@ -408,7 +408,7 @@ mod helper;
 ///             _ => false,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type and the given closure
 ///     /// evalutates to `true`, otherwise returns `false`.
 ///     fn is_v4_and(&self, f: impl FnOnce((&u8, &u8, &u8, &u8)) -> bool) -> bool {
@@ -417,7 +417,7 @@ mod helper;
 ///             _ => false,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns `None`.
 ///     fn v6(self) -> Option<String> {
@@ -426,7 +426,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise returns `None`.
 ///     fn v6_as_ref(&self) -> Option<&String> {
@@ -435,7 +435,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise returns `None`.
 ///     fn v6_as_mut(&mut self) -> Option<&mut String> {
@@ -444,7 +444,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// panics.
 ///     fn unwrap_v6(self) -> String {
@@ -453,7 +453,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::V6. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise panics.
 ///     fn unwrap_v6_as_ref(&self) -> &String {
@@ -462,7 +462,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::V6. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise panics.
 ///     fn unwrap_v6_as_mut(&mut self) -> &mut String {
@@ -471,7 +471,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::V6. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the given default value.
 ///     fn unwrap_v6_or(self, default: String) -> String {
@@ -480,7 +480,7 @@ mod helper;
 ///             _ => default,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the value that the given closure evaluated to.
 ///     fn unwrap_v6_or_else(self, f: impl FnOnce(Self) -> String) -> String {
@@ -489,7 +489,7 @@ mod helper;
 ///             some => f(some),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum is of the expected type, otherwise panics with
 ///     /// the given error message.
 ///     fn expect_v6(self, msg: &str) -> String {
@@ -498,7 +498,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_v6_as_ref(&self, msg: &str) -> &String {
@@ -507,7 +507,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_v6_as_mut(&mut self, msg: &str) -> &mut String {
@@ -516,7 +516,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type, otherwise returns
 ///     /// `false`.
 ///     fn is_v6(&self) -> bool {
@@ -525,7 +525,7 @@ mod helper;
 ///             _ => false,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type and the given closure
 ///     /// evalutates to `true`, otherwise returns `false`.
 ///     fn is_v6_and(&self, f: impl FnOnce(&String) -> bool) -> bool {
@@ -534,7 +534,7 @@ mod helper;
 ///             _ => false,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns `None`.
 ///     fn multi(self) -> Option<IpAddressMulti> {
@@ -543,7 +543,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise returns `None`.
 ///     fn multi_as_ref(&self) -> Option<IpAddressMultiRef> {
@@ -552,7 +552,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise returns `None`.
 ///     fn multi_as_mut(&mut self) -> Option<IpAddressMultiMut> {
@@ -561,7 +561,7 @@ mod helper;
 ///             _ => None,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// panics.
 ///     fn unwrap_multi(self) -> IpAddressMulti {
@@ -570,7 +570,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::Multi. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum value is of the expected type,
 ///     /// otherwise panics.
 ///     fn unwrap_multi_as_ref(&self) -> IpAddressMultiRef {
@@ -579,7 +579,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::Multi. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum value is of the expected
 ///     /// type, otherwise panics.
 ///     fn unwrap_multi_as_mut(&mut self) -> IpAddressMultiMut {
@@ -588,7 +588,7 @@ mod helper;
 ///             _ => panic!("Failed unwrapping to IpAddress::Multi. Unexpected variant"),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the given default value.
 ///     fn unwrap_multi_or(self, default: IpAddressMulti) -> IpAddressMulti {
@@ -597,7 +597,7 @@ mod helper;
 ///             _ => default,
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum value is of the expected type, otherwise
 ///     /// returns the value that the given closure evaluated to.
 ///     fn unwrap_multi_or_else(
@@ -609,7 +609,7 @@ mod helper;
 ///             some => f(some),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns the inner data, if the enum is of the expected type, otherwise panics with
 ///     /// the given error message.
 ///     fn expect_multi(self, msg: &str) -> IpAddressMulti {
@@ -618,7 +618,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_multi_as_ref(&self, msg: &str) -> IpAddressMultiRef {
@@ -627,7 +627,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns a mutable reference to the inner data, if the enum is of the expected type,
 ///     /// otherwise panics with the given error message.
 ///     fn expect_multi_as_mut(&mut self, msg: &str) -> IpAddressMultiMut {
@@ -636,7 +636,7 @@ mod helper;
 ///             _ => panic!("{}", msg),
 ///         }
 ///     }
-/// 
+///
 ///     /// Returns `true`, if the enum value is of the expected type, otherwise returns
 ///     /// `false`.
 ///     fn is_multi(&self) -> bool {
@@ -674,15 +674,15 @@ mod helper;
 ///         v6: String,
 ///     },
 /// }
-/// 
+///
 /// // fn <variant>()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).v4(), Some((192, 168, 0, 1)));
 /// assert_eq!(IpAddress::None.multi(), None);
-/// 
+///
 /// // fn is_<variant>()
 /// assert_eq!(IpAddress::None.is_none(), true);
 /// assert_eq!(IpAddress::V6("::1".into()).is_v4(), false);
-/// 
+///
 /// // fn is_<variant>_and()
 /// assert_eq!(IpAddress::V4(192, 168, 0, 1).is_v4_and(|ip| *ip.0 == 192), true);
 /// assert_eq!(IpAddress::V6("::1".into()).is_v6_and(|ip| *ip == "::"), false);
@@ -716,7 +716,7 @@ mod helper;
 ///     IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() }.unwrap_multi(),
 ///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() }
 /// );
-/// 
+///
 /// // Using automatic Copy derive on Ref struct
 /// let ip = IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() };
 /// let copy = ip.unwrap_multi_as_ref();
@@ -777,10 +777,10 @@ pub fn enpow(
 /// IpAddress::V6(IpAddressV6("::1".into()));
 /// IpAddress::Multi(IpAddressMulti { v4: (192, 168, 0, 1), v6: "::1".into() });
 /// ```
-/// 
+///
 /// <details>
 /// <summary>ℹ️ Click to reveal generated code</summary>
-/// 
+///
 /// ```rust
 /// enum IpAddress {
 ///     None(IpAddressNone),
@@ -788,13 +788,13 @@ pub fn enpow(
 ///     V6(IpAddressV6),
 ///     Multi(IpAddressMulti),
 /// }
-/// 
+///
 /// struct IpAddressNone;
-/// 
+///
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-/// 
+///
 /// struct IpAddressV6(pub String);
-/// 
+///
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
 ///     pub v6: String,
@@ -804,7 +804,7 @@ pub fn enpow(
 ///
 /// This example will extract all variants with multiple unnamed fields or named fields into
 /// separate structs.
-/// 
+///
 /// ```rust
 /// # use enpow::extract;
 ///
@@ -822,15 +822,15 @@ pub fn enpow(
 /// // Using the unmodified enum variants
 /// IpAddress::None;
 /// IpAddress::V6("::1".into());
-/// 
+///
 /// // Using the modified enum variants and its generated structs
 /// IpAddress::V4(IpAddressV4(192, 168, 0, 1));
 /// IpAddress::Multi(IpAddressMulti { v4: (192, 168, 0, 1), v6: "::1".into() });
 /// ```
-/// 
+///
 /// <details>
 /// <summary>ℹ️ Click to reveal generated code</summary>
-/// 
+///
 /// ```rust
 /// enum IpAddress {
 ///     None,
@@ -838,9 +838,9 @@ pub fn enpow(
 ///     V6(String),
 ///     Multi(IpAddressMulti),
 /// }
-/// 
+///
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-/// 
+///
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
 ///     pub v6: String,
@@ -877,10 +877,10 @@ pub fn enpow(
 ///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() }
 /// );
 /// ```
-/// 
+///
 /// <details>
 /// <summary>ℹ️ Click to reveal generated code</summary>
-/// 
+///
 /// ```rust
 /// enum IpAddress {
 ///     None(IpAddressNone),
@@ -888,16 +888,16 @@ pub fn enpow(
 ///     V6(IpAddressV6),
 ///     Multi(IpAddressMulti),
 /// }
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressNone;
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressV6(pub String);
-/// 
+///
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),

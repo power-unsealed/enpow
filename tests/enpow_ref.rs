@@ -1,8 +1,18 @@
 use enpow::enpow;
 
 #[enpow(VarAsRef)]
+#[enpow_derive(Debug, PartialEq)]
 pub enum Test<'a> {
-    A {
-        string: &'a str,
-    }
+    A,
+    B(&'a str),
+    C(&'a str, usize),
+    D { string: &'a str },
+}
+
+#[test]
+fn test() {
+    assert_eq!(
+        Test::D { string: "Hello" }.d_as_ref(),
+        Some(TestDRef { string: &"Hello" })
+    );
 }

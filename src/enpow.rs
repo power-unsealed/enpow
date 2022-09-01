@@ -307,16 +307,16 @@ mod tests {
         let source = "
         #[enpow_derive(Debug, PartialEq)]
         #[derive(Clone, Debug, PartialEq)]
-        pub enum Token<Span> {
+        pub enum Token<'a, Span> {
             /// `+`
             Plus(
                 /// Source span
-                Span
+                &'a Span
             ),
             /// Unsigned integer literal
             Number {
                 /// Source span
-                span: Span,
+                span: &'a Span,
                 /// Value
                 value: u64,
             }
