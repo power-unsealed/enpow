@@ -195,7 +195,7 @@ use enpow::{enpow, extract}; // ℹ️
 #[extract(Unnamed, Named)]   // ℹ️
 #[extract_derive(Clone)]     // ℹ️
 #[enpow(VarAsRef, UnwrapVar)]
-#[derive(Clone)]
+#[derive(Clone)]             // derive must come after extract
 pub enum LogEntry<C: ToString + Clone> {
     // ✂ unchanged
 #   /// A simple note without context
