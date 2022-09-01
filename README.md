@@ -8,6 +8,14 @@ Additionally, this crate allows to extract the data associated with each enum va
 
 It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as demonstrated in the following use case.
 
+# Installation
+
+Add the following to your `Cargo.toml` to include `enpow` as dependency to your project.
+```toml
+[dependencies]
+enpow = "~1.0.1"
+```
+
 # Use Case
 
 The following code describes a simple logging system with support for different log levels. We then create an example log and print all errors in it.
