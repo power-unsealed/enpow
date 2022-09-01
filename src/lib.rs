@@ -61,46 +61,119 @@ mod helper;
 /// - `All`
 ///     * Generates all methods mentioned.
 ///
+/// This example will generate all methods.
+/// ```rust
+/// # use enpow::enpow;
+///
+/// #[enpow(All)]
+/// #[enpow_derive(Debug, PartialEq)]
+/// #[derive(Debug, PartialEq)]
+/// enum IpAddress {
+///     None,
+///     V4(u8, u8, u8, u8),
+///     V6(String),
+///     Multi {
+///         v4: (u8, u8, u8, u8),
+///         v6: String,
+///     },
+/// }
+/// 
+/// // fn <variant>()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).v4(), Some((192, 168, 0, 1)));
+/// assert_eq!(IpAddress::V6("::1".into()).v6(), Some("::1".into()));
+/// assert_eq!(IpAddress::None.multi(), None);
+/// 
+/// // fn is_<variant>()
+/// assert_eq!(IpAddress::None.is_none(), true);
+/// assert_eq!(IpAddress::V6("::1".into()).is_v4(), false);
+/// 
+/// // fn is_<variant>_and()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).is_v4_and(|ip| *ip.0 == 192), true);
+/// assert_eq!(IpAddress::V6("::1".into()).is_v6_and(|ip| *ip == "::"), false);
+/// assert_eq!(IpAddress::None.is_v4_and(|_| true), false);
+/// 
+/// // fn <variant>_as_ref()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).v4_as_ref(), Some((&192, &168, &0, &1)));
+/// assert_eq!(
+///     IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() }.multi_as_ref(),
+///     Some(IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into() })
+/// );
+/// assert_eq!(IpAddress::V6("::1".into()).none_as_ref(), None);
+/// 
+/// // fn <variant>_as_mut()
+/// let mut ip = IpAddress::V4(192, 168, 0, 1);
+/// if let Some(v4) = ip.v4_as_mut() {
+///     *v4.3 = 2;
+/// }
+/// assert_eq!(ip, IpAddress::V4(192, 168, 0, 2));
+/// 
+/// // fn unwrap_<variant>()
+/// assert_eq!(IpAddress::V6("::1".into()).unwrap_v6(), "::1".to_owned());
+/// 
+/// // fn unwrap_<variant>_as_ref()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).unwrap_v4_as_ref(), (&192, &168, &0, &1));
+/// 
+/// // fn unwrap_<variant>_as_mut()
+/// let mut ip = IpAddress::V4(192, 168, 0, 1);
+/// *ip.unwrap_v4_as_mut().3 = 2;
+/// assert_eq!(ip, IpAddress::V4(192, 168, 0, 2));
+/// 
+/// // fn unwrap_<variant>_or()
+/// assert_eq!(IpAddress::V6("::1".into()).unwrap_v6_or("::".into()), "::1".to_owned());
+/// assert_eq!(IpAddress::V4(192, 168, 0, 2).unwrap_v6_or("::".into()), "::".to_owned());
+/// 
+/// // fn unwrap_<variant>_or_else()
+/// assert_eq!(IpAddress::None.unwrap_v4_or_else(|_| (0, 0, 0, 0)), (0, 0, 0, 0));
+/// assert_eq!(
+///     IpAddress::V6("::1".into()).unwrap_v6_or_else(|_| unreachable!()),
+///     "::1".to_owned()
+/// );
+/// 
+/// // fn expect_<variant>()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).expect_v4("Expected V4"), (192, 168, 0, 1));
+/// 
+/// // fn unwrap_<variant>_as_ref()
+/// assert_eq!(
+///     IpAddress::V6("::1".into()).expect_v6_as_ref("Unexpected variant"),
+///     &"::1".to_owned()
+/// );
+/// 
+/// // fn unwrap_<variant>_as_mut()
+/// let mut ip = IpAddress::V6("::".into());
+/// ip.expect_v6_as_mut("Expected V6").push('1');
+/// assert_eq!(ip, IpAddress::V6("::1".into()));
+/// 
+/// ```
+///
 /// This example will generate methods of the category `Var` and `IsVar`.
 /// ```rust
 /// # use enpow::enpow;
 ///
 /// #[enpow(Var, IsVar)]
-/// enum Test {
-///     A,
-///     B(u32),
-///     C(u32, i32),
-///     D { a: u32, b: i32 },
-/// }
-///
-/// // Use the auto implementation
-/// assert!(Test::A.is_a());
-/// assert_eq!(Test::B(7).b(), Some(7));
-/// ```
-///
-/// This example will generate all methods.
-/// ```rust
-/// # use enpow::enpow;
-///
-/// #[enpow]
+/// #[enpow_derive(Debug, PartialEq)]
 /// #[derive(Debug, PartialEq)]
-/// enum Test {
-///     A,
-///     B(u32),
-///     C(u32, i32),
-///     D { a: u32, b: i32 },
+/// enum IpAddress {
+///     None,
+///     V4(u8, u8, u8, u8),
+///     V6(String),
+///     Multi {
+///         v4: (u8, u8, u8, u8),
+///         v6: String,
+///     },
 /// }
-///
-/// // Use the auto implementation
-/// assert!(Test::A.is_a());
-/// assert_eq!(Test::B(7).b(), Some(7));
-/// Test::C(3, -3).expect_c("Expected Test::C");
-///
-/// let mut test = Test::D { a: 7, b: -7 };
-/// if let Some(dmut) = test.d_as_mut() {
-///     *dmut.b = 42;
-/// }
-/// assert_eq!(test, Test::D { a: 7, b: 42 });
+/// 
+/// // fn <variant>()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).v4(), Some((192, 168, 0, 1)));
+/// assert_eq!(IpAddress::None.multi(), None);
+/// 
+/// // fn is_<variant>()
+/// assert_eq!(IpAddress::None.is_none(), true);
+/// assert_eq!(IpAddress::V6("::1".into()).is_v4(), false);
+/// 
+/// // fn is_<variant>_and()
+/// assert_eq!(IpAddress::V4(192, 168, 0, 1).is_v4_and(|ip| *ip.0 == 192), true);
+/// assert_eq!(IpAddress::V6("::1".into()).is_v6_and(|ip| *ip == "::"), false);
+/// assert_eq!(IpAddress::None.is_v4_and(|_| true), false);
 /// ```
 ///
 /// ## Auto Derives
@@ -113,15 +186,30 @@ mod helper;
 /// ```rust
 /// # use enpow::enpow;
 ///
-/// #[enpow]
-/// #[enpow_derive(Clone, Debug, PartialEq)]
-/// enum Test {
-///     C(u32, i32),
-///     D { a: u32, b: i32 },
+/// #[enpow(All)]
+/// #[enpow_derive(Debug, PartialEq)]
+/// enum IpAddress {
+///     None,
+///     V4(u8, u8, u8, u8),
+///     V6(String),
+///     Multi {
+///         v4: (u8, u8, u8, u8),
+///         v6: String,
+///     },
 /// }
 ///
-/// // Using PartialEq and Debug
-/// assert_eq!(Test::D { a: 7, b: -7 }.unwrap_d(), TestD { a: 7, b: -7 });
+/// // Using PartialEq and Debug derive
+/// assert_eq!(
+///     IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() }.unwrap_multi(),
+///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() }
+/// );
+/// 
+/// // Using automatic Copy derive on Ref struct
+/// let ip = IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() };
+/// let copy = ip.unwrap_multi_as_ref();
+/// let another_copy = copy;
+/// assert_eq!(copy, IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
+/// assert_eq!(another_copy, IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
 /// ```
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]
@@ -155,41 +243,51 @@ pub fn enpow(
 /// - `Named`: Extracts variants with named fields into structs.
 /// - `All`: Extracts all variants into structs.
 ///
+/// This example will extract all variants.
+/// ```rust
+/// # use enpow::extract;
+///
+/// #[extract(All)]
+/// enum IpAddress {
+///     None,
+///     V4(u8, u8, u8, u8),
+///     V6(String),
+///     Multi {
+///         v4: (u8, u8, u8, u8),
+///         v6: String,
+///     },
+/// }
+///
+/// // Using the modified enum variants and its generated structs
+/// IpAddress::None(IpAddressNone);
+/// IpAddress::V4(IpAddressV4(192, 168, 0, 1));
+/// IpAddress::V6(IpAddressV6("::1".into()));
+/// IpAddress::Multi(IpAddressMulti { v4: (192, 168, 0, 1), v6: "::1".into() });
+/// ```
+///
 /// This example will extract all variants with multiple unnamed fields or named fields into
 /// separate structs.
 /// ```rust
 /// # use enpow::extract;
 ///
 /// #[extract(Unnamed, Named)]
-/// enum Test {
-///     A,
-///     B(u32),
-///     C(u32, i32),
-///     D { a: u32, b: i32 },
+/// enum IpAddress {
+///     None,
+///     V4(u8, u8, u8, u8),
+///     V6(String),
+///     Multi {
+///         v4: (u8, u8, u8, u8),
+///         v6: String,
+///     },
 /// }
 ///
-/// Test::A;
-/// Test::B(7);
-/// Test::C(TestC(7, -7));
-/// Test::D(TestD { a: 7, b: -7 });
-/// ```
-///
-/// This example will extract all variants.
-/// ```rust
-/// # use enpow::extract;
-///
-/// #[extract]
-/// enum Test {
-///     A,
-///     B(u32),
-///     C(u32, i32),
-///     D { a: u32, b: i32 },
-/// }
-///
-/// Test::A(TestA);
-/// Test::B(TestB(7));
-/// Test::C(TestC(7, -7));
-/// Test::D(TestD { a: 7, b: -7 });
+/// // Using the unmodified enum variants
+/// IpAddress::None;
+/// IpAddress::V6("::1".into());
+/// 
+/// // Using the modified enum variants and its generated structs
+/// IpAddress::V4(IpAddressV4(192, 168, 0, 1));
+/// IpAddress::Multi(IpAddressMulti { v4: (192, 168, 0, 1), v6: "::1".into() });
 /// ```
 ///
 /// An additional `derive` macro attached to the enum should come __after__ `extract`
@@ -205,13 +303,21 @@ pub fn enpow(
 ///
 /// #[extract]
 /// #[extract_derive(Clone, Debug, PartialEq)]
-/// enum Test {
-///     C(u32, i32),
-///     D { a: u32, b: i32 },
+/// enum IpAddress {
+///     None,
+///     V4(u8, u8, u8, u8),
+///     V6(String),
+///     Multi {
+///         v4: (u8, u8, u8, u8),
+///         v6: String,
+///     },
 /// }
 ///
-/// // Using PartialEq and Debug
-/// assert_eq!(TestD { a: 7, b: -7 }, TestD { a: 7, b: -7 });
+/// // Using PartialEq and Debug derive
+/// assert_eq!(
+///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() },
+///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() }
+/// );
 /// ```
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]
