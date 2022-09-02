@@ -28,7 +28,7 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
         .map(|var| var.extract_info(&parent))
         .collect::<Result<_, _>>()?;
 
-    let mut type_defs = Vec::new();
+    let mut items = Vec::new();
     for (i, mut variant) in variants.into_iter().enumerate() {
         if types.contains(&variant.var_type.get_extract_type()) {
             // For each variant, build the data type and type definition
@@ -47,8 +47,11 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
             };
             data.variants[i].fields = Fields::Unnamed(syn::parse2(quote! { (#data_type) })?);
 
-            // Save the type definition
-            type_defs.push(type_def);
+            // Generate the From trait for this extracted variant
+            let from_impl = variant.build_from_impl_after_extraction(&parent);
+
+            // Save the type definition and implementation
+            items.push((type_def, from_impl));
         }
     }
 
@@ -74,10 +77,16 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
     // Build the derive tokens
     let derives = quote! { #[derive(#(#derives),*)] };
 
+    // Build the streams for each struct
+    let items: Vec<_> = items
+        .into_iter()
+        .map(|(type_def, from_impl)| quote! { #derives #type_def #from_impl })
+        .collect();
+
     Ok(quote! {
         #output
 
-        #(#derives #type_defs)*
+        #(#items)*
     })
 }
 

@@ -441,6 +441,24 @@ impl VariantInfo {
         .clone()
     }
 
+    /// Builds an implementation of the From trait for this variant. It is expected, that the
+    /// variant will be of the form `Enum::Variant(ExtractedSelfType)` in the final code! That
+    /// means, this only works for extracted variants.
+    pub fn build_from_impl_after_extraction(&mut self, parent: &EnumInfo) -> TokenStream {
+        let data_type = self.build_extracted_self_type();
+        let path = &self.full_path;
+        let enum_ident = &parent.identifier;
+        let (gen_main, gen_short, gen_where) = parent.generics.split_for_impl();
+
+        quote! {
+            impl #gen_main From<#data_type> for #enum_ident #gen_short #gen_where {
+                fn from(inner: #data_type) -> Self {
+                    #path(inner)
+                }
+            }
+        }
+    }
+
     /////////////
     // Methods //
     /////////////
