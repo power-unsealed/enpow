@@ -1,3 +1,5 @@
+use outer::*;
+
 mod outer {
     use enpow::extract;
 
@@ -32,8 +34,15 @@ mod outer {
 #[test]
 #[allow(path_statements)]
 fn test() {
-    outer::InnerA;
-    outer::InnerB(0);
-    outer::InnerC('a', 0);
-    outer::InnerD { a: 'a', b: 0 };
+    // Use automatically generated structs
+    InnerA;
+    InnerB(0);
+    InnerC('a', 0);
+    InnerD { a: 'a', b: 0 };
+
+    // Use automatic From implementation
+    assert_eq!(Inner::from(InnerA), Inner::A::<u32, char>(InnerA));
+    assert_eq!(Inner::from(InnerB(0)), Inner::B::<u32, char>(InnerB(0)));
+    assert_eq!(Inner::from(InnerC('c', 0)), Inner::C(InnerC('c', 0)));
+    assert_eq!(Inner::from(InnerD { a: 0, b: 'd' }), Inner::D(InnerD { a: 0, b: 'd' }));
 }
