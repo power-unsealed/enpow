@@ -1,3 +1,5 @@
+use outer::*;
+
 mod outer {
     use enpow::{enpow, extract};
 
@@ -32,8 +34,8 @@ mod outer {
 
 #[test]
 fn test() {
-    assert!(outer::Inner::<i32, char>::A.is_a());
-    assert!(outer::Inner::<i32, char>::B(outer::InnerB(0)).is_b());
-    assert!(outer::Inner::<i32, char>::C(outer::InnerC(0, 'c')).is_c());
-    assert!(outer::Inner::<i32, char>::D(outer::InnerD { a: 0, b: 'd' }).is_d());
+    assert!(Inner::<i32, char>::A.is_a());
+    assert!(Inner::<i32, char>::from(InnerB(0)).is_b());
+    assert!(Inner::from(InnerC(0, 'c')).is_c());
+    assert!(Inner::from(InnerD { a: 0, b: 'd' }).is_d());
 }
