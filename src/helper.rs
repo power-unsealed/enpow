@@ -18,6 +18,128 @@ macro_rules! cache_access {
     }};
 }
 
+/// Unified configuration attribute
+pub struct InnerAttributeInfo {
+    pub derives: Vec<Path>,
+    pub type_name: Option<Ident>,
+    pub method_name: Option<Ident>,
+}
+
+impl InnerAttributeInfo {
+    pub fn is_inner_attr(attr: &Attribute) -> bool {
+        attr.path.get_ident()
+            .map_or(false, |ident| &ident.to_string() == "inner")
+    }
+}
+
+impl Parse for InnerAttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        // Parse the arguments to the attribute
+        let content;
+        parenthesized!(content in input);
+        let span = content.span();
+        let args: Punctuated<_, Token![,]> = content.parse_terminated(InnerArgument::parse)?;
+
+        // Extract the information from the arguments
+        let mut derives = Vec::new();
+        let mut type_name = None;
+        let mut method_name = None;
+        for arg in args {
+            match arg {
+                InnerArgument::Derive(paths) => {
+                    derives.extend(paths);
+                }
+                InnerArgument::TypeName(ident) => {
+                    if type_name.is_some() {
+                        return Err(Error::new(
+                            span,
+                            "Redundant naming detected. Either use `name` XOR `type_name`."
+                        ));
+                    } else {
+                        type_name = Some(ident);
+                    }
+                }
+                InnerArgument::MethodName(ident) => {
+                    if method_name.is_some() {
+                        return Err(Error::new(
+                            span,
+                            "Redundant naming detected. Either use `name` XOR `method_name`."
+                        ));
+                    } else {
+                        method_name = Some(ident);
+                    }
+                }
+                InnerArgument::Name(ident) => {
+                    if type_name.is_some() {
+                        return Err(Error::new(
+                            span,
+                            "Redundant naming detected. Either use `name` XOR `type_name`."
+                        ));
+                    } else {
+                        type_name = Some(ident.clone());
+                    }
+
+                    if method_name.is_some() {
+                        return Err(Error::new(
+                            span,
+                            "Redundant naming detected. Either use `name` XOR `method_name`."
+                        ));
+                    } else {
+                        method_name = Some(Ident::new(
+                            &ident.to_string().to_snake_case(),
+                            ident.span()
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(InnerAttributeInfo {
+            derives,
+            type_name,
+            method_name,
+        })
+    }
+}
+
+enum InnerArgument {
+    Derive(Vec<Path>),
+    Name(Ident),
+    TypeName(Ident),
+    MethodName(Ident),
+}
+
+impl Parse for InnerArgument {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let ident: Ident = input.parse()?;
+        match ident.to_string().as_str() {
+            "derive" => {
+                let content;
+                parenthesized!(content in input);
+                let args: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
+                let paths = args.into_iter().collect();
+                Ok(InnerArgument::Derive(paths))
+            }
+            "name" => {
+                input.parse::<Token![=]>()?;
+                let ident: Ident = input.parse()?;
+                Ok(InnerArgument::Name(ident))
+            }
+            "type_name" => {
+                input.parse::<Token![=]>()?;
+                let ident: Ident = input.parse()?;
+                Ok(InnerArgument::TypeName(ident))
+            }
+            "method_name" => {
+                input.parse::<Token![=]>()?;
+                let ident: Ident = input.parse()?;
+                Ok(InnerArgument::MethodName(ident))
+            }
+            _ => Err(Error::new(ident.span(), "Unexpected argument")),
+        }
+    }
+}
+
 pub struct DeriveAttributeInfo {
     pub derives: Vec<Path>,
 }
