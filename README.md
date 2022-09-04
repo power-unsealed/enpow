@@ -6,7 +6,7 @@ EnPow is a procedural macro crate used to en**Pow**er user defined **En**ums wit
 
 Additionally, this crate allows to extract the data associated with each enum variant into separate structs, allowing for more compact code e.g. when designing an Abstract Syntax Tree. See the `extract` macro documentation for more details.
 
-It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as demonstrated in the following use case.
+It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as further explained in the following use case. Nevertheless, both macros can be used indenpendently from each other.
 
 # Installation
 
