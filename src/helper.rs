@@ -5,7 +5,7 @@ use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
     visit::Visit, Attribute, Data, DataEnum, DeriveInput, Error, Fields, GenericParam, Generics,
     Ident, ItemStruct, Lifetime, LifetimeDef, Path, Token, Type, TypeParam, TypePath, TypeTuple,
-    Variant, Visibility, WherePredicate,
+    Variant, Visibility, WherePredicate, LitStr,
 };
 
 macro_rules! cache_access {
@@ -25,9 +25,13 @@ pub struct InnerAttributeInfo {
     pub method_name: Option<Ident>,
 }
 
-impl InnerAttributeInfo {
-    pub fn is_inner_attr(attr: &Attribute) -> bool {
-        attr.path.get_ident()
+trait InnerAttributeCheck {
+    fn is_inner_config(&self) -> bool;
+}
+
+impl InnerAttributeCheck for Attribute {
+    fn is_inner_config(&self) -> bool {
+        self.path.get_ident()
             .map_or(false, |ident| &ident.to_string() == "inner")
     }
 }
@@ -122,18 +126,18 @@ impl Parse for InnerArgument {
             }
             "name" => {
                 input.parse::<Token![=]>()?;
-                let ident: Ident = input.parse()?;
-                Ok(InnerArgument::Name(ident))
+                let ident: LitStr = input.parse()?;
+                Ok(InnerArgument::Name(ident.parse()?))
             }
             "type_name" => {
                 input.parse::<Token![=]>()?;
-                let ident: Ident = input.parse()?;
-                Ok(InnerArgument::TypeName(ident))
+                let ident: LitStr = input.parse()?;
+                Ok(InnerArgument::TypeName(ident.parse()?))
             }
             "method_name" => {
                 input.parse::<Token![=]>()?;
-                let ident: Ident = input.parse()?;
-                Ok(InnerArgument::MethodName(ident))
+                let ident: LitStr = input.parse()?;
+                Ok(InnerArgument::MethodName(ident.parse()?))
             }
             _ => Err(Error::new(ident.span(), "Unexpected argument")),
         }
@@ -166,6 +170,9 @@ impl Parse for DeriveAttributeInfo {
 pub struct EnumInfo {
     pub span: Span,
     pub attributes: Vec<Attribute>,
+    /// The parsed `inner` attributes with their index in the attribute collection
+    pub inners: Vec<(usize, InnerAttributeInfo)>,
+    pub derives: Vec<Path>,
     pub generics: Generics,
     pub identifier: Ident,
     pub visibility: Visibility,
@@ -180,6 +187,7 @@ impl EnumInfoAdapter for DeriveInput {
     fn extract_info(self) -> Result<EnumInfo, Error> {
         let span = self.span();
 
+        // Extract the enum data
         let data = match self.data {
             Data::Enum(data) => data,
             _ => {
@@ -190,10 +198,38 @@ impl EnumInfoAdapter for DeriveInput {
             }
         };
 
+        // Parse all `inner` config attributes
+        let mut inners = Vec::new();
+        let mut derives = Vec::new();
+        for (i, attr) in self.attrs.iter().enumerate() {
+            if attr.is_inner_config() {
+                let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
+
+                if let Some(type_name) = &inner.type_name {
+                    return Err(Error::new(
+                        type_name.span(),
+                        "Renaming only supported on variants, not on the enum itself."
+                    ));
+                }
+                
+                if let Some(method_name) = &inner.method_name {
+                    return Err(Error::new(
+                        method_name.span(),
+                        "Renaming only supported on variants, not on the enum itself."
+                    ));
+                }
+
+                derives.extend(inner.derives.iter().cloned());
+                inners.push((i, inner));
+            }
+        }
+
         Ok(EnumInfo {
             span,
-            generics: self.generics,
             attributes: self.attrs,
+            generics: self.generics,
+            derives,
+            inners,
             identifier: self.ident,
             visibility: self.vis,
             data,
