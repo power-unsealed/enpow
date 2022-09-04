@@ -815,7 +815,8 @@ pub fn enpow(
 /// fields are transformed into structs, each named after the enum and variant, i.e.
 /// `EnumVariant`. The structs generated inherit the visibility modifier of the target enum.
 /// Additionally, doc comments attached to the variants and variant fields are inherited by the
-/// generated structs.
+/// generated structs. The macro also automatically implements the `From` trait for every extracted
+/// type to convert it into its corresponding enum variant.
 ///
 /// In parethesis, the following arguments to `extract` can be used to specify which variant types
 /// to extract. Without any arguments, all variants will be extracted.
@@ -858,20 +859,44 @@ pub fn enpow(
 ///     V6(IpAddressV6),
 ///     Multi(IpAddressMulti),
 /// }
-///
+/// 
 /// #[derive()]
 /// struct IpAddressNone;
-///
+/// 
+/// impl From<IpAddressNone> for IpAddress {
+///     fn from(inner: IpAddressNone) -> Self {
+///         IpAddress::None(inner)
+///     }
+/// }
+/// 
 /// #[derive()]
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-///
+/// 
+/// impl From<IpAddressV4> for IpAddress {
+///     fn from(inner: IpAddressV4) -> Self {
+///         IpAddress::V4(inner)
+///     }
+/// }
+/// 
 /// #[derive()]
 /// struct IpAddressV6(pub String);
-///
+/// 
+/// impl From<IpAddressV6> for IpAddress {
+///     fn from(inner: IpAddressV6) -> Self {
+///         IpAddress::V6(inner)
+///     }
+/// }
+/// 
 /// #[derive()]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
 ///     pub v6: String,
+/// }
+/// 
+/// impl From<IpAddressMulti> for IpAddress {
+///     fn from(inner: IpAddressMulti) -> Self {
+///         IpAddress::Multi(inner)
+///     }
 /// }
 /// ```
 /// </details>
@@ -907,19 +932,28 @@ pub fn enpow(
 ///
 /// ```rust
 /// enum IpAddress {
-///     None,
-///     V4(IpAddressV4),
-///     V6(String),
-///     Multi(IpAddressMulti),
+///     None(IpAddressNone),
+///     V4(u8, u8, u8, u8),
+///     V6(IpAddressV6),
+///     Multi { v4: (u8, u8, u8, u8), v6: String },
 /// }
-///
+/// 
 /// #[derive()]
-/// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-///
+/// struct IpAddressNone;
+/// 
+/// impl From<IpAddressNone> for IpAddress {
+///     fn from(inner: IpAddressNone) -> Self {
+///         IpAddress::None(inner)
+///     }
+/// }
+/// 
 /// #[derive()]
-/// struct IpAddressMulti {
-///     pub v4: (u8, u8, u8, u8),
-///     pub v6: String,
+/// struct IpAddressV6(pub String);
+/// 
+/// impl From<IpAddressV6> for IpAddress {
+///     fn from(inner: IpAddressV6) -> Self {
+///         IpAddress::V6(inner)
+///     }
 /// }
 /// ```
 /// </details>
@@ -964,20 +998,44 @@ pub fn enpow(
 ///     V6(IpAddressV6),
 ///     Multi(IpAddressMulti),
 /// }
-///
+/// 
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressNone;
-///
+/// 
+/// impl From<IpAddressNone> for IpAddress {
+///     fn from(inner: IpAddressNone) -> Self {
+///         IpAddress::None(inner)
+///     }
+/// }
+/// 
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
-///
+/// 
+/// impl From<IpAddressV4> for IpAddress {
+///     fn from(inner: IpAddressV4) -> Self {
+///         IpAddress::V4(inner)
+///     }
+/// }
+/// 
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressV6(pub String);
-///
+/// 
+/// impl From<IpAddressV6> for IpAddress {
+///     fn from(inner: IpAddressV6) -> Self {
+///         IpAddress::V6(inner)
+///     }
+/// }
+/// 
 /// #[derive(Clone, Debug, PartialEq)]
 /// struct IpAddressMulti {
 ///     pub v4: (u8, u8, u8, u8),
 ///     pub v6: String,
+/// }
+/// 
+/// impl From<IpAddressMulti> for IpAddress {
+///     fn from(inner: IpAddressMulti) -> Self {
+///         IpAddress::Multi(inner)
+///     }
 /// }
 /// ```
 /// </details>

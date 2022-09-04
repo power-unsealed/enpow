@@ -183,25 +183,20 @@ mod tests {
     #[test]
     fn extract() {
         let input = quote! {
-            #[extract_derive(Debug, PartialEq)]
-            #[derive(Clone, Debug, PartialEq)]
-            pub enum Token<Span> {
-                /// `+`
-                Plus(
-                    /// Source span
-                    Span
-                ),
-                /// Unsigned integer literal
-                Number {
-                    /// Source span
-                    span: Span,
-                    /// Value
-                    value: u64,
-                }
+            #[extract_derive(Clone, Debug, PartialEq)]
+            enum IpAddress {
+                None,
+                V4(u8, u8, u8, u8),
+                V6(String),
+                Multi {
+                    v4: (u8, u8, u8, u8),
+                    v6: String,
+                },
             }
         };
 
         let mut types = HashSet::new();
+        types.insert(ExtractType::Unit);
         types.insert(ExtractType::Single);
         types.insert(ExtractType::Unnamed);
         types.insert(ExtractType::Named);
