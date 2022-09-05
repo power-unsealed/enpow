@@ -196,7 +196,7 @@ Currently, however, there are two (depending on the generated methods, up to fou
 
 Here, the `extract` macro comes into play, which does this automatically for us. We tell the macro to do the extraction for every variant with more than one unnamed field (keyword `Unnamed`) or with named fields (keyword `Named`). This will automatically change our two affected variants into `LogEntry::Warning(LogEntryWarning<C>)` and `LogEntry::Error(LogEntryError<C>)`. We can then use the generated type `LogEntryError<C>` to guarantee that actually only errors are returned by `get_errors()`. Note, how the construction of the log entries changes, even though the enum code was not changed by hand. `extract` also automatically implements the `From` trait to convert instances of the extracted types into the corresponding enum variants.
 
-Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `extract_derive(Clone)` attribute.
+Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `inner(derive(Clone))` attribute.
 
 > ⚠️ When combining both macros, `enpow` must be placed _after_ `extract` to work correctly. Also, the normal `derive` must be placed _after_ `extract`;
 
@@ -205,7 +205,7 @@ use enpow::{enpow, extract}; // ℹ️
 
 /// A log entry
 #[extract(Unnamed, Named)] // ℹ️
-#[extract_derive(Clone)]   //
+#[inner(derive(Clone))]    //
 #[enpow(VarAsRef)]         //
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
