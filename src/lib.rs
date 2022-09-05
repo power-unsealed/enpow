@@ -64,7 +64,7 @@ mod helper;
 /// This example will generate all methods.
 /// ```rust
 /// # use enpow::enpow;
-///
+/// #
 /// #[enpow(All)]
 /// #[inner(derive(Debug, PartialEq))]
 /// #[derive(Debug, PartialEq)]
@@ -147,7 +147,7 @@ mod helper;
 /// This example will generate methods of the category `Var` and `IsVar`.
 /// ```rust
 /// # use enpow::enpow;
-///
+/// #
 /// #[enpow(Var, IsVar)]
 /// #[inner(derive(Debug, PartialEq))]
 /// #[derive(Debug, PartialEq)]
@@ -186,7 +186,7 @@ mod helper;
 ///
 /// ```rust
 /// # use enpow::enpow;
-///
+/// #
 /// #[enpow(All)]
 /// #[inner(derive(Debug, PartialEq))]
 /// enum IpAddress {
@@ -250,7 +250,7 @@ pub fn enpow(
 /// 
 /// ```rust
 /// # use enpow::extract;
-///
+/// #
 /// #[extract(All)]
 /// enum IpAddress {
 ///     None,
@@ -274,7 +274,7 @@ pub fn enpow(
 ///
 /// ```rust
 /// # use enpow::extract;
-///
+/// #
 /// #[extract(Unnamed, Named)]
 /// enum IpAddress {
 ///     None,
@@ -307,7 +307,7 @@ pub fn enpow(
 ///
 /// ```rust
 /// # use enpow::extract;
-///
+/// #
 /// #[extract]
 /// #[inner(derive(Clone, Debug, PartialEq))]
 /// enum IpAddress {
