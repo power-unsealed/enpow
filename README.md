@@ -283,15 +283,15 @@ if !errors.is_empty() {
 }
 ```
 
-At last, we get rid of the long names of the generated structs by giving each of the variant a shorter `type_name="..."`. For this, the same `inner()` helper attribute is used. Besides, with `inner()` it is also possible to change how the variant's name appears in its methods `method_name="..."`, and it is possible to add auto derives to a single variant.
+At last, we get rid of the long names of the generated structs by giving every variant a shorter `type_name="..."`. For this, the same `inner()` helper attribute is used. Besides, with `inner()` it is also possible to change how the variant's name appears in its methods `method_name="..."`, and it is possible to add auto derives to a single variant.
 
 ```rust
-use enpow::{enpow, extract}; // ℹ️
+use enpow::{enpow, extract};
 
 /// A log entry
-#[extract(Unnamed, Named)] // ℹ️
-#[enpow(VarAsRef)]         //
-#[inner(derive(Clone))]    //
+#[extract(Unnamed, Named)]
+#[enpow(VarAsRef)]
+#[inner(derive(Clone))]
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
     /// A simple note without context
@@ -300,7 +300,7 @@ pub enum LogEntry<C: ToString + Clone> {
         String
     ),
     /// A warning with a given context
-    #[inner(type_name="Warning")]
+    #[inner(type_name="Warning")] // ℹ️
     Warning(
         /// Warning's message
         String,
@@ -308,7 +308,7 @@ pub enum LogEntry<C: ToString + Clone> {
         C
     ),
     /// An error message with error code and context
-    #[inner(type_name="Error")]
+    #[inner(type_name="Error")] // ℹ️
     Error {
         /// Error message
         message: String,
@@ -329,7 +329,7 @@ impl<C: ToString + Clone> Log<C> {
     /// Collects all entries of type `LogEntry::Error` from the log
     pub fn get_errors(&self) -> Vec<Error<C>> { // ℹ️
         self.entries.iter()
-            .filter_map(|entry| entry.error_as_ref())   // ℹ️
+            .filter_map(|entry| entry.error_as_ref())
             .cloned()
             .collect()
     }
@@ -363,7 +363,6 @@ if !errors.is_empty() {
     eprintln!("Failed for the following reasons:");
 
     for error in errors {
-        // ℹ️
         eprintln!("Error {} at {}: {}", error.code, error.context, error.message);
     }
 }
