@@ -208,10 +208,10 @@ mod helper;
 ///
 /// // Using automatic Copy derive on Ref struct
 /// let ip = IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() };
-/// let copy = ip.unwrap_multi_as_ref();
+/// let copy = ip.unwrap_mul_as_ref();
 /// let another_copy = copy;
-/// assert_eq!(copy, IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
-/// assert_eq!(another_copy, IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
+/// assert_eq!(copy, MultiAddressRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
+/// assert_eq!(another_copy, MultiAddressRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
 /// ```
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]
@@ -311,9 +311,9 @@ pub fn enpow(
 /// #[extract]
 /// #[inner(derive(Clone, Debug, PartialEq))]
 /// enum IpAddress {
-///     #[inner(type_name="NoIp"), derive(Copy)]
+///     #[inner(type_name="NoIp", derive(Copy))]
 ///     None,
-///     #[inner(type_name="IpV4"), derive(Copy)]
+///     #[inner(type_name="IpV4", derive(Copy))]
 ///     V4(u8, u8, u8, u8),
 ///     #[inner(type_name="IpV6")]
 ///     V6(String),
@@ -326,8 +326,8 @@ pub fn enpow(
 ///
 /// // Using PartialEq and Debug derive
 /// assert_eq!(
-///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() },
-///     IpAddressMulti { v4: (0, 0, 0, 0), v6: "::".into() }
+///     MultiIp { v4: (0, 0, 0, 0), v6: "::".into() },
+///     MultiIp { v4: (0, 0, 0, 0), v6: "::".into() }
 /// );
 /// ```
 ///////////////////////////////////////////////////////////////////////////////////////////////////
