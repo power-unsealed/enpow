@@ -20,6 +20,7 @@ macro_rules! cache_access {
 
 /// Unified configuration attribute
 pub struct InnerAttributeInfo {
+    pub span: Span,
     pub derives: Vec<Path>,
     pub type_name: Option<Ident>,
     pub method_name: Option<Ident>,
@@ -99,6 +100,7 @@ impl Parse for InnerAttributeInfo {
         }
 
         Ok(InnerAttributeInfo {
+            span,
             derives,
             type_name,
             method_name,
