@@ -3,9 +3,9 @@ use outer::*;
 mod outer {
     use enpow::{enpow, extract};
 
-    #[extract(Single, Unnamed, Named)]
-    #[extract_derive(Debug, PartialEq)]
+    #[extract(Single, Unnamed)]
     #[enpow(IsVar)]
+    #[inner(derive(Debug, PartialEq))]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
         /// Docs for `A`
@@ -37,5 +37,8 @@ fn test() {
     assert!(Inner::<i32, char>::A.is_a());
     assert!(Inner::<i32, char>::from(InnerB(0)).is_b());
     assert!(Inner::from(InnerC(0, 'c')).is_c());
-    assert!(Inner::from(InnerD { a: 0, b: 'd' }).is_d());
+
+    // Check whether inner(derive()) is applied to both macros
+    assert_eq!(Inner::from(InnerC(0, 'c')), Inner::C(InnerC(0, 'c')));
+    assert_eq!(Inner::D { a: 0, b: 'd' }, Inner::D { a: 0, b: 'd' });
 }

@@ -179,6 +179,7 @@ pub struct EnumInfo {
     pub identifier: Ident,
     pub visibility: Visibility,
     pub data: DataEnum,
+    pub has_other_calls: bool,
 }
 
 pub trait EnumInfoAdapter {
@@ -219,6 +220,16 @@ impl EnumInfoAdapter for DeriveInput {
             }
         }
 
+        // Check for additional calls to `enpow` or `extract`
+        let mut has_other_calls = false;
+        for attr in &self.attrs {
+            let last = attr.path.segments.last().map(|s| s.to_token_stream().to_string());
+            if last.map_or(false, |str| str == "enpow" || str == "extract") {
+                has_other_calls = true;
+                break;
+            }
+        }
+
         Ok(EnumInfo {
             span,
             attributes: self.attrs,
@@ -228,6 +239,7 @@ impl EnumInfoAdapter for DeriveInput {
             identifier: self.ident,
             visibility: self.vis,
             data,
+            has_other_calls,
         })
     }
 }

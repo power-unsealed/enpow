@@ -103,12 +103,16 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         }
     }
 
-    // Get the derives from the inner attributes and remove the original inner attributes from the
-    // ast
+    // Get the derives from the inner attributes
     self_derives.extend(parent.derives.clone());
-    for (i, _) in parent.inners.iter() {
-        output.attrs.remove(i - attr_removed);
-        attr_removed += 1;
+
+    // Remove the original inner attributes from the ast if there are no other macro calls that
+    // need them
+    if !parent.has_other_calls {
+        for (i, _) in parent.inners.iter() {
+            output.attrs.remove(i - attr_removed);
+            attr_removed += 1;
+        }
     }
 
     // Ref already has Clone and Copy, while mut is not allowed to get Clone and Copy.

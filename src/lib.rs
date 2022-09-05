@@ -963,14 +963,14 @@ pub fn enpow(
 ///
 /// ## Auto Derives
 ///
-/// Attaching the additional attribute `extract_derive()` __below__ `extract` adds the specified
-/// auto trait derives to the automatically generated types.
+/// Attaching the additional configuration attribute `inner()` with the argument `derive()`
+/// __below__ `extract` enables to add auto trait derives to the automatically generated types.
 ///
 /// ```rust
 /// # use enpow::extract;
 ///
 /// #[extract]
-/// #[extract_derive(Clone, Debug, PartialEq)]
+/// #[inner(derive(Clone, Debug, PartialEq))]
 /// enum IpAddress {
 ///     None,
 ///     V4(u8, u8, u8, u8),

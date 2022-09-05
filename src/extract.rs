@@ -74,6 +74,18 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
         }
     }
 
+    // Get the derives from the inner attributes
+    derives.extend(parent.derives.clone());
+
+    // Remove the original inner attributes from the ast if there are no other macro calls that
+    // need them
+    if !parent.has_other_calls {
+        for (i, _) in parent.inners.iter() {
+            output.attrs.remove(i - attr_removed);
+            attr_removed += 1;
+        }
+    }
+
     // Build the derive tokens
     let derives = quote! { #[derive(#(#derives),*)] };
 
@@ -183,7 +195,7 @@ mod tests {
     #[test]
     fn extract() {
         let input = quote! {
-            #[extract_derive(Clone, Debug, PartialEq)]
+            #[inner(derive(Clone, Debug, PartialEq))]
             enum IpAddress {
                 None,
                 V4(u8, u8, u8, u8),
