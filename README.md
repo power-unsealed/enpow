@@ -10,6 +10,8 @@ It is also possible to combine both macros when keeping them in the right order:
 
 # Installation
 
+> ⚠️ API Stability Warning: Because of an irreversible mistake in versioning, for this crate, version `1.x.y` is considered to have an __unstable__ API. Expect breaking API changes, even though it is not `0.x.y`. Version `2.0.0` will thus be the first stable release in future.
+
 Add the following to your `Cargo.toml` to include `enpow` as dependency to your project.
 ```toml
 [dependencies]
