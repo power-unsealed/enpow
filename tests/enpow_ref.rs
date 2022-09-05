@@ -1,7 +1,7 @@
 use enpow::enpow;
 
 #[enpow(VarAsRef)]
-#[enpow_derive(Debug, PartialEq)]
+#[inner(derive(Debug, PartialEq))]
 pub enum Test<'a> {
     A,
     B(&'a str),

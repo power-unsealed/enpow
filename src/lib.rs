@@ -66,7 +66,7 @@ mod helper;
 /// # use enpow::enpow;
 ///
 /// #[enpow(All)]
-/// #[enpow_derive(Debug, PartialEq)]
+/// #[inner(derive(Debug, PartialEq))]
 /// #[derive(Debug, PartialEq)]
 /// enum IpAddress {
 ///     None,
@@ -733,7 +733,7 @@ mod helper;
 /// # use enpow::enpow;
 ///
 /// #[enpow(Var, IsVar)]
-/// #[enpow_derive(Debug, PartialEq)]
+/// #[inner(derive(Debug, PartialEq))]
 /// #[derive(Debug, PartialEq)]
 /// enum IpAddress {
 ///     None,
@@ -761,16 +761,16 @@ mod helper;
 ///
 /// ## Auto Derives
 ///
-/// Attaching the additional attribute `enpow_derive()` __below__ `enpow` adds the specified auto
-/// trait derives to the automatically generated types. `Ref` structs always automatically derive
-/// `Clone` and `Copy`, while `Mut` structs are prohibited from deriving these traits. This
-/// exclusion will be handled automatically by the macro.
+/// Attaching the additional configuration attribute `inner()` with the argument `derive()`
+/// __below__ `enpow` enables to add auto trait derives to the automatically generated types. `Ref`
+/// structs always automatically derive `Clone` and `Copy`, while `Mut` structs are prohibited from
+/// deriving these traits. This exclusion will be handled automatically by the macro.
 ///
 /// ```rust
 /// # use enpow::enpow;
 ///
 /// #[enpow(All)]
-/// #[enpow_derive(Debug, PartialEq)]
+/// #[inner(derive(Debug, PartialEq))]
 /// enum IpAddress {
 ///     None,
 ///     V4(u8, u8, u8, u8),

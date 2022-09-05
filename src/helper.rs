@@ -207,16 +207,9 @@ impl EnumInfoAdapter for DeriveInput {
             if attr.is_inner_config() {
                 let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
 
-                if let Some(type_name) = &inner.type_name {
+                if inner.type_name.is_some() || inner.method_name.is_some() {
                     return Err(Error::new(
-                        type_name.span(),
-                        "Renaming only supported on variants, not on the enum itself."
-                    ));
-                }
-                
-                if let Some(method_name) = &inner.method_name {
-                    return Err(Error::new(
-                        method_name.span(),
+                        inner.span,
                         "Renaming only supported on variants, not on the enum itself."
                     ));
                 }

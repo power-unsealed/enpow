@@ -83,6 +83,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         }
     }
 
+    // DEPRECATED
     // Check for every attached attribute `enpow_derive`
     let mut self_derives = Vec::new();
     let mut attr_removed = 0;
@@ -102,22 +103,22 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         }
     }
 
+    // Get the derives from the inner attributes and remove the original inner attributes from the
+    // ast
+    self_derives.extend(parent.derives.clone());
+    for (i, _) in parent.inners.iter() {
+        output.attrs.remove(i - attr_removed);
+        attr_removed += 1;
+    }
+
     // Ref already has Clone and Copy, while mut is not allowed to get Clone and Copy.
     // Because of the dynamic import system, we cannot say for sure how these macros are
     // identified -> best efford
-    let derive_filter: [String; 6] = [
-        quote!(core::clone::Clone).to_string(),
-        quote!(clone::Clone).to_string(),
-        quote!(Clone).to_string(),
-        quote!(core::marker::Copy).to_string(),
-        quote!(marker::Copy).to_string(),
-        quote!(Copy).to_string(),
-    ];
     let ref_derives: Vec<_> = self_derives
         .iter()
-        .map(|path| (path.to_token_stream().to_string(), path))
-        .filter_map(|(pathstr, path)| {
-            if derive_filter.contains(&pathstr) {
+        .filter_map(|path| {
+            let last = path.segments.last().map(|l| l.to_token_stream().to_string());
+            if let Some("Copy") | Some("Clone") = last.as_ref().map(|s| s.as_str()) {
                 None
             } else {
                 Some(path)
@@ -304,6 +305,7 @@ mod tests {
     fn enpow() {
         let input = quote! {
             #[enpow_derive(Debug, PartialEq)]
+            #[inner(derive(Clone))]
             #[derive(Clone, Debug, PartialEq)]
             pub enum Token<'a, Span> {
                 /// `+`
