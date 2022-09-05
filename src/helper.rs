@@ -35,7 +35,7 @@ impl InnerAttributeInfo {
             Error::new(old.span(), "First name defined here").to_compile_error();
             Err(Error::new(
                 new.span(),
-                "Redundant naming detected. Either use `name` XOR `type_name`."
+                "Redundant naming detected"
             ))
         } else {
             *type_name = Some(new);
@@ -51,7 +51,7 @@ impl InnerAttributeInfo {
             Error::new(old.span(), "First name defined here").to_compile_error();
             Err(Error::new(
                 new.span(),
-                "Redundant naming detected. Either use `name` XOR `method_name`."
+                "Redundant naming detected"
             ))
         } else {
             *method_name = Some(new);
@@ -94,12 +94,6 @@ impl Parse for InnerAttributeInfo {
                 InnerArgument::MethodName(ident) => {
                     InnerAttributeInfo::save_method_name_or_redundant_err(ident, &mut method_name)?;
                 }
-                InnerArgument::Name(ident) => {
-                    InnerAttributeInfo::save_type_name_or_redundant_err(ident.clone(), &mut type_name)?;
-                    
-                    let method = Ident::new(&ident.to_string().to_snake_case(), ident.span());
-                    InnerAttributeInfo::save_method_name_or_redundant_err(method, &mut method_name)?;
-                }
             }
         }
 
@@ -114,7 +108,6 @@ impl Parse for InnerAttributeInfo {
 
 enum InnerArgument {
     Derive(Vec<Path>),
-    Name(Ident),
     TypeName(Ident),
     MethodName(Ident),
 }
@@ -129,11 +122,6 @@ impl Parse for InnerArgument {
                 let args: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
                 let paths = args.into_iter().collect();
                 Ok(InnerArgument::Derive(paths))
-            }
-            "name" => {
-                input.parse::<Token![=]>()?;
-                let ident: LitStr = input.parse()?;
-                Ok(InnerArgument::Name(ident.parse()?))
             }
             "type_name" => {
                 input.parse::<Token![=]>()?;
