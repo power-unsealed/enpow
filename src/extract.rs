@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::helper::{DeriveAttributeInfo, EnumInfoAdapter, VariantInfoAdapter, VariantType};
+use crate::helper::{EnumInfoAdapter, VariantInfoAdapter, VariantType};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
@@ -28,6 +28,12 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
         .map(|var| var.extract_info(&parent))
         .collect::<Result<_, _>>()?;
 
+    // Get a reference to the output enum's data
+    let output_data = match &mut output.data {
+        Data::Enum(data) => data,
+        _ => unreachable!("At that point it should be ensured that the macro target is an enum"),
+    };
+
     let mut items = Vec::new();
     for (i, mut variant) in variants.into_iter().enumerate() {
         if types.contains(&variant.var_type.get_extract_type()) {
@@ -36,64 +42,43 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
             let type_def = variant.build_self_type_def();
 
             // Manipulate the corresponding enum variant to contain only this new type
-            let data = match &mut output.data {
-                Data::Enum(data) => data,
-                _ => {
-                    return Err(Error::new(
-                        Span::call_site(),
-                        "Can only be derived for enums",
-                    ));
-                }
-            };
-            data.variants[i].fields = Fields::Unnamed(syn::parse2(quote! { (#data_type) })?);
+            output_data.variants[i].fields = Fields::Unnamed(
+                syn::parse2(quote! { (#data_type) })?
+            );
 
             // Generate the From trait for this extracted variant
             let from_impl = variant.build_from_impl_after_extraction(&parent);
 
+            // Get the variant derives
+            let derives = &variant.derives;
+            let derives = quote! { #[derive(#(#derives),*)] };
+
+            // Remove the original inner attributes from the ast if there are no other macro calls
+            // that need them
+            if parent.other_calls_from.is_none() {
+                for (attr_removed, (idx, _)) in variant.inners.iter().enumerate() {
+                    output_data.variants[i].attrs.remove(idx - attr_removed);
+                }
+            }
+
             // Save the type definition and implementation
-            items.push((type_def, from_impl));
+            items.push(quote! {
+                #derives
+                #type_def
+                #from_impl
+            });
         }
     }
 
-    // Check for every attached attribute `extract_derive`
-    let mut derives = Vec::new();
+    // Remove each inner attribute without another macro call before it
+    let remove_until = parent.other_calls_from.unwrap_or(parent.attributes.len());
     let mut attr_removed = 0;
-    for (i, attr) in parent.attributes.iter().enumerate() {
-        let ident = attr.path.get_ident();
-        if ident
-            .map(|i| i.to_string() == "extract_derive")
-            .unwrap_or(false)
-        {
-            // Get the derive Traits
-            let info: DeriveAttributeInfo = syn::parse2(attr.tokens.clone())?;
-            derives.extend(info.derives);
-
-            // Remove this attribute from the output ast
+    for (i, _) in parent.inners.iter() {
+        if *i < remove_until {
             output.attrs.remove(i - attr_removed);
             attr_removed += 1;
         }
     }
-
-    // Get the derives from the inner attributes
-    derives.extend(parent.derives.clone());
-
-    // Remove the original inner attributes from the ast if there are no other macro calls that
-    // need them
-    if !parent.has_other_calls {
-        for (i, _) in parent.inners.iter() {
-            output.attrs.remove(i - attr_removed);
-            attr_removed += 1;
-        }
-    }
-
-    // Build the derive tokens
-    let derives = quote! { #[derive(#(#derives),*)] };
-
-    // Build the streams for each struct
-    let items: Vec<_> = items
-        .into_iter()
-        .map(|(type_def, from_impl)| quote! { #derives #type_def #from_impl })
-        .collect();
 
     Ok(quote! {
         #output
@@ -198,7 +183,9 @@ mod tests {
             #[inner(derive(Clone, Debug, PartialEq))]
             enum IpAddress {
                 None,
+                #[inner(type_name="IpV4", derive(Copy))]
                 V4(u8, u8, u8, u8),
+                #[inner(type_name="IpV6")]
                 V6(String),
                 Multi {
                     v4: (u8, u8, u8, u8),

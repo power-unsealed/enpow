@@ -150,40 +150,20 @@ impl Parse for InnerArgument {
     }
 }
 
-pub struct DeriveAttributeInfo {
-    pub derives: Vec<Path>,
-}
-
-impl Parse for DeriveAttributeInfo {
-    fn parse(input: ParseStream) -> Result<Self, Error> {
-        if input.is_empty() {
-            Ok(DeriveAttributeInfo {
-                derives: Vec::new(),
-            })
-        } else {
-            // Parse the derive arguments in parenthesis
-            let content;
-            parenthesized!(content in input);
-            let derives: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
-
-            Ok(DeriveAttributeInfo {
-                derives: derives.into_iter().collect(),
-            })
-        }
-    }
-}
-
 pub struct EnumInfo {
     pub span: Span,
     pub attributes: Vec<Attribute>,
     /// The parsed `inner` attributes with their index in the attribute collection
     pub inners: Vec<(usize, InnerAttributeInfo)>,
+    /// All `inner(derive())` directly applied to the enum itself
     pub derives: Vec<Path>,
     pub generics: Generics,
     pub identifier: Ident,
     pub visibility: Visibility,
     pub data: DataEnum,
-    pub has_other_calls: bool,
+    /// Whether there are other calls to `enpow` or `extract`, starting from the attribute at the
+    /// given index
+    pub other_calls_from: Option<usize>,
 }
 
 pub trait EnumInfoAdapter {
@@ -225,11 +205,11 @@ impl EnumInfoAdapter for DeriveInput {
         }
 
         // Check for additional calls to `enpow` or `extract`
-        let mut has_other_calls = false;
-        for attr in &self.attrs {
+        let mut other_calls_from = None;
+        for (i, attr) in self.attrs.iter().enumerate() {
             let last = attr.path.segments.last().map(|s| s.to_token_stream().to_string());
             if last.map_or(false, |str| str == "enpow" || str == "extract") {
-                has_other_calls = true;
+                other_calls_from = Some(i);
                 break;
             }
         }
@@ -243,7 +223,7 @@ impl EnumInfoAdapter for DeriveInput {
             identifier: self.ident,
             visibility: self.vis,
             data,
-            has_other_calls,
+            other_calls_from,
         })
     }
 }
@@ -281,6 +261,7 @@ pub enum VariantType {
 pub struct VariantInfo {
     pub docs: Vec<Attribute>,
     pub inners: Vec<(usize, InnerAttributeInfo)>,
+    /// All `inner(derive())` applied to the enum or to this variant
     pub derives: Vec<Path>,
     pub visibility: Visibility,
     pub var_type: VariantType,
@@ -317,7 +298,7 @@ impl VariantInfo {
         let mut inners = Vec::new();
         let mut type_name = None;
         let mut method_name = None;
-        let mut derives = Vec::new();
+        let mut derives = parent.derives.clone();
         for (i, attr) in attributes.iter().enumerate() {
             if attr.is_inner_config() {
                 let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
