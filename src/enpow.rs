@@ -43,7 +43,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
     // Check all variants whether there is a name clash when turned into snake case
     let var_names: Vec<_> = variants
         .iter()
-        .map(|v| (v.snake_case.clone(), v.identifier.span()))
+        .map(|v| (v.method_name.clone(), v.identifier.span()))
         .collect();
     for (i, (i_name, _)) in var_names.iter().enumerate() {
         for (j, (j_name, span)) in var_names.iter().enumerate() {

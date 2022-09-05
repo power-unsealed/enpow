@@ -26,6 +26,40 @@ pub struct InnerAttributeInfo {
     pub method_name: Option<Ident>,
 }
 
+impl InnerAttributeInfo {
+    fn save_type_name_or_redundant_err(
+        new: Ident,
+        type_name: &mut Option<Ident>
+    ) -> Result<(), Error> {
+        if let Some(old) = type_name {
+            Error::new(old.span(), "First name defined here").to_compile_error();
+            Err(Error::new(
+                new.span(),
+                "Redundant naming detected. Either use `name` XOR `type_name`."
+            ))
+        } else {
+            *type_name = Some(new);
+            Ok(())
+        }
+    }
+    
+    fn save_method_name_or_redundant_err(
+        new: Ident,
+        method_name: &mut Option<Ident>
+    ) -> Result<(), Error> {
+        if let Some(old) = method_name {
+            Error::new(old.span(), "First name defined here").to_compile_error();
+            Err(Error::new(
+                new.span(),
+                "Redundant naming detected. Either use `name` XOR `method_name`."
+            ))
+        } else {
+            *method_name = Some(new);
+            Ok(())
+        }
+    }
+}
+
 trait InnerAttributeCheck {
     fn is_inner_config(&self) -> bool;
 }
@@ -55,46 +89,16 @@ impl Parse for InnerAttributeInfo {
                     derives.extend(paths);
                 }
                 InnerArgument::TypeName(ident) => {
-                    if type_name.is_some() {
-                        return Err(Error::new(
-                            span,
-                            "Redundant naming detected. Either use `name` XOR `type_name`."
-                        ));
-                    } else {
-                        type_name = Some(ident);
-                    }
+                    InnerAttributeInfo::save_type_name_or_redundant_err(ident, &mut type_name)?;
                 }
                 InnerArgument::MethodName(ident) => {
-                    if method_name.is_some() {
-                        return Err(Error::new(
-                            span,
-                            "Redundant naming detected. Either use `name` XOR `method_name`."
-                        ));
-                    } else {
-                        method_name = Some(ident);
-                    }
+                    InnerAttributeInfo::save_method_name_or_redundant_err(ident, &mut method_name)?;
                 }
                 InnerArgument::Name(ident) => {
-                    if type_name.is_some() {
-                        return Err(Error::new(
-                            span,
-                            "Redundant naming detected. Either use `name` XOR `type_name`."
-                        ));
-                    } else {
-                        type_name = Some(ident.clone());
-                    }
-
-                    if method_name.is_some() {
-                        return Err(Error::new(
-                            span,
-                            "Redundant naming detected. Either use `name` XOR `method_name`."
-                        ));
-                    } else {
-                        method_name = Some(Ident::new(
-                            &ident.to_string().to_snake_case(),
-                            ident.span()
-                        ));
-                    }
+                    InnerAttributeInfo::save_type_name_or_redundant_err(ident.clone(), &mut type_name)?;
+                    
+                    let method = Ident::new(&ident.to_string().to_snake_case(), ident.span());
+                    InnerAttributeInfo::save_method_name_or_redundant_err(method, &mut method_name)?;
                 }
             }
         }
@@ -276,12 +280,14 @@ pub enum VariantType {
 
 pub struct VariantInfo {
     pub docs: Vec<Attribute>,
+    pub inners: Vec<(usize, InnerAttributeInfo)>,
+    pub derives: Vec<Path>,
     pub visibility: Visibility,
     pub var_type: VariantType,
     /// Variant identifier
     pub identifier: Ident,
     /// Variant identifier in snake case
-    pub snake_case: String,
+    pub method_name: String,
     /// `Enum::Variant`
     pub full_path: Path,
     pub generics: Generics,
@@ -299,7 +305,7 @@ impl VariantInfo {
     pub fn new(
         var_type: VariantType,
         identifier: Ident,
-        docs: Vec<Attribute>,
+        attributes: Vec<Attribute>,
         parent: &EnumInfo,
     ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
@@ -307,11 +313,52 @@ impl VariantInfo {
         // Build path
         let full_path: Path = syn::parse2(quote! { #enum_ident :: #identifier })?;
 
+        // Parse all `inner` config attributes
+        let mut inners = Vec::new();
+        let mut type_name = None;
+        let mut method_name = None;
+        let mut derives = Vec::new();
+        for (i, attr) in attributes.iter().enumerate() {
+            if attr.is_inner_config() {
+                let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
+                
+                if let Some(new) = &inner.type_name {
+                    InnerAttributeInfo::save_type_name_or_redundant_err(new.clone(), &mut type_name)?;
+                }
+                
+                if let Some(new) = &inner.method_name {
+                    InnerAttributeInfo::save_method_name_or_redundant_err(new.clone(), &mut method_name)?; 
+                }
+
+                derives.extend(inner.derives.iter().cloned());
+                inners.push((i, inner));
+            }
+        }
+
+        // Buid the identifiers depending on the given variant name and possible renames
+        let method_name = match method_name {
+            Some(method_name) => method_name.to_string(),
+            None => identifier.to_string().to_snake_case(),
+        };
+        let type_idents = match type_name {
+            Some(type_name) => {
+                let self_ident = format_ident!("{type_name}");
+                let ref_ident = format_ident!("{type_name}Ref");
+                let mut_ident = format_ident!("{type_name}Mut");
+                SelfRefMut::new(self_ident, ref_ident, mut_ident)
+            }
+            None => {
+                let self_ident = format_ident!("{enum_ident}{identifier}");
+                let ref_ident = format_ident!("{enum_ident}{identifier}Ref");
+                let mut_ident = format_ident!("{enum_ident}{identifier}Mut");
+                SelfRefMut::new(self_ident, ref_ident, mut_ident)
+            }
+        };
+
+        // Extract doc comments
+        let docs = attributes.extract_docs();
+
         // Build type idents
-        let self_ident = format_ident!("{enum_ident}{identifier}");
-        let ref_ident = format_ident!("{enum_ident}{identifier}Ref");
-        let mut_ident = format_ident!("{enum_ident}{identifier}Mut");
-        let type_idents = SelfRefMut::new(self_ident, ref_ident, mut_ident);
 
         // Build a dummy type tuple with all types contained in the fields.
         // Then parse it and find out which generics were actually used in it.
@@ -347,9 +394,11 @@ impl VariantInfo {
 
         Ok(VariantInfo {
             docs,
+            inners,
+            derives,
             visibility: parent.visibility.clone(),
             var_type,
-            snake_case: identifier.to_string().to_snake_case(),
+            method_name,
             full_path,
             identifier,
             generics,
@@ -632,10 +681,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = Ident::new(&snake_case, Span::call_site());
+        let fn_ident = Ident::new(&method_name, Span::call_site());
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -654,10 +703,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("{snake_case}_as_ref");
+        let fn_ident = format_ident!("{method_name}_as_ref");
 
         quote! {
             /// Returns a reference to the inner data, if the enum value is of the expected type,
@@ -676,10 +725,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("{snake_case}_as_mut");
+        let fn_ident = format_ident!("{method_name}_as_mut");
 
         quote! {
             /// Returns a mutable reference to the inner data, if the enum value is of the expected
@@ -695,10 +744,10 @@ impl VariantInfo {
 
     pub fn build_is(&mut self) -> TokenStream {
         let pattern = self.build_match_pattern();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("is_{snake_case}");
+        let fn_ident = format_ident!("is_{method_name}");
 
         quote! {
             /// Returns `true`, if the enum value is of the expected type, otherwise returns
@@ -717,10 +766,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("is_{snake_case}_and");
+        let fn_ident = format_ident!("is_{method_name}_and");
 
         quote! {
             /// Returns `true`, if the enum value is of the expected type and the given closure
@@ -741,10 +790,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}");
+        let fn_ident = format_ident!("unwrap_{method_name}");
         let panic_msg = format!(
             "Failed unwrapping to {}::{}. Unexpected variant",
             parent.identifier, self.identifier,
@@ -767,10 +816,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_as_ref");
+        let fn_ident = format_ident!("unwrap_{method_name}_as_ref");
         let panic_msg = format!(
             "Failed unwrapping to {}::{}. Unexpected variant",
             parent.identifier, self.identifier,
@@ -793,10 +842,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_as_mut");
+        let fn_ident = format_ident!("unwrap_{method_name}_as_mut");
         let panic_msg = format!(
             "Failed unwrapping to {}::{}. Unexpected variant",
             parent.identifier, self.identifier,
@@ -818,10 +867,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_or");
+        let fn_ident = format_ident!("unwrap_{method_name}_or");
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -839,10 +888,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_or_else");
+        let fn_ident = format_ident!("unwrap_{method_name}_or_else");
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -860,10 +909,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("expect_{snake_case}");
+        let fn_ident = format_ident!("expect_{method_name}");
 
         quote! {
             /// Returns the inner data, if the enum is of the expected type, otherwise panics with
@@ -882,10 +931,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("expect_{snake_case}_as_ref");
+        let fn_ident = format_ident!("expect_{method_name}_as_ref");
 
         quote! {
             /// Returns a reference to the inner data, if the enum is of the expected type,
@@ -904,10 +953,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("expect_{snake_case}_as_mut");
+        let fn_ident = format_ident!("expect_{method_name}_as_mut");
 
         quote! {
             /// Returns a mutable reference to the inner data, if the enum is of the expected type,
@@ -929,11 +978,11 @@ pub trait VariantInfoAdapter {
 impl VariantInfoAdapter for Variant {
     fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let identifier = self.ident;
-        let docs = self.attrs.extract_docs();
+        let attributes = self.attrs;
 
         match self.fields {
             // Variant without data
-            Fields::Unit => VariantInfo::new(VariantType::Unit, identifier, docs, parent),
+            Fields::Unit => VariantInfo::new(VariantType::Unit, identifier, attributes, parent),
 
             // Variant with one unnamed fields
             Fields::Unnamed(mut tuple) if tuple.unnamed.len() == 1 => {
@@ -942,7 +991,7 @@ impl VariantInfoAdapter for Variant {
                     docs: single.attrs.extract_docs(),
                     data_type: single.ty,
                 };
-                VariantInfo::new(VariantType::Single(field), identifier, docs, parent)
+                VariantInfo::new(VariantType::Single(field), identifier, attributes, parent)
             }
 
             // Variant with unnamed fields
@@ -955,7 +1004,7 @@ impl VariantInfoAdapter for Variant {
                         data_type: field.ty,
                     })
                     .collect();
-                VariantInfo::new(VariantType::Unnamed(fields), identifier, docs, parent)
+                VariantInfo::new(VariantType::Unnamed(fields), identifier, attributes, parent)
             }
 
             // Variant with named fields
@@ -969,7 +1018,7 @@ impl VariantInfoAdapter for Variant {
                         data_type: field.ty,
                     })
                     .collect();
-                VariantInfo::new(VariantType::Named(fields), identifier, docs, parent)
+                VariantInfo::new(VariantType::Named(fields), identifier, attributes, parent)
             }
         }
     }
