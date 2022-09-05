@@ -190,7 +190,7 @@ if !errors.is_empty() {
 
 Even though this code is already more concise, there is still a rough edge. When collecting all the errors, they still are returned as `Vec<LogEntry>` with no guarantee by the type system that this collection would actually contain only errors. We could solve this problem by returning from `get_errors()` the type `LogEntryError<C>` that was already constructed to aid the `unwrap_error()` method.
 
-Currently, however, there are two (depending on the generated methods, up to four) parts in the code where the same data is defined: in the enum variant `LogEntry::Error { .. }`, and in the just mentioned, automatically generated struct `LogEntryError<C>`. It might be more desireable to extract the enum variant into this struct and let the variant just point to it, like so: `LogEntry::Error(LogEntryError<C>)`. This would especially come in handy when working with methods that need references to the variant's associated data, since up until now, special `LogEntryErrorRef<C>` and `LogEntryErrorMut<C>` structs need to be generated for that. With the data extracted, it would be possible to just use `&LogEntryError<C>` and `&mut LogEntryError<C>`.
+Currently, however, there are multiple (depending on the generated methods, up to four) parts in the code where the same data is defined: in the enum variant `LogEntry::Error { .. }`, and in the just mentioned, automatically generated struct `LogEntryError<C>`. It might be more desireable to extract the enum variant into this struct and let the variant just point to it, like so: `LogEntry::Error(LogEntryError<C>)`. This would especially come in handy when working with methods that need references to the variant's associated data, since up until now, special `LogEntryErrorRef<C>` and `LogEntryErrorMut<C>` structs need to be generated for that. With the data extracted, it would be possible to just use `&LogEntryError<C>` and `&mut LogEntryError<C>`.
 
 ## Using `extract`
 
@@ -205,8 +205,8 @@ use enpow::{enpow, extract}; // ℹ️
 
 /// A log entry
 #[extract(Unnamed, Named)] // ℹ️
-#[inner(derive(Clone))]    //
 #[enpow(VarAsRef)]         //
+#[inner(derive(Clone))]    //
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
     // ✂ unchanged
@@ -265,6 +265,92 @@ let log = Log { entries: vec![
         code: -1,
     }),
     LogEntry::from(LogEntryError { // ℹ️
+        message: "Follow up".into(),
+        context: 12,
+        code: -7,
+    }),
+] };
+
+// Get and print all errors
+let errors = log.get_errors();
+if !errors.is_empty() {
+    eprintln!("Failed for the following reasons:");
+
+    for error in errors {
+        // ℹ️
+        eprintln!("Error {} at {}: {}", error.code, error.context, error.message);
+    }
+}
+```
+
+At last, we get rid of the long names of the generated structs by giving each of the variant a shorter `type_name="..."`. For this, the same `inner()` helper attribute is used. Besides, with `inner()` it is also possible to change how the variant's name appears in its methods `method_name="..."`, and it is possible to add auto derives to a single variant.
+
+```rust
+use enpow::{enpow, extract}; // ℹ️
+
+/// A log entry
+#[extract(Unnamed, Named)] // ℹ️
+#[enpow(VarAsRef)]         //
+#[inner(derive(Clone))]    //
+#[derive(Clone)]
+pub enum LogEntry<C: ToString + Clone> {
+    /// A simple note without context
+    Note(
+        /// Note's message
+        String
+    ),
+    /// A warning with a given context
+    #[inner(type_name="Warning")]
+    Warning(
+        /// Warning's message
+        String,
+        /// Context of the warning
+        C
+    ),
+    /// An error message with error code and context
+    #[inner(type_name="Error")]
+    Error {
+        /// Error message
+        message: String,
+        /// Context of the error
+        context: C,
+        /// Error code
+        code: i16,
+    },
+}
+
+/// Application log for a certain context type
+pub struct Log<C: ToString + Clone> {
+    /// Log entries
+    entries: Vec<LogEntry<C>>,
+}
+
+impl<C: ToString + Clone> Log<C> {
+    /// Collects all entries of type `LogEntry::Error` from the log
+    pub fn get_errors(&self) -> Vec<Error<C>> { // ℹ️
+        self.entries.iter()
+            .filter_map(|entry| entry.error_as_ref())   // ℹ️
+            .cloned()
+            .collect()
+    }
+}
+
+/// Line number in source
+type Line = usize;
+
+// Create a sample log
+let log = Log { entries: vec![
+    LogEntry::Note("All fine 😊".into()),
+    LogEntry::from(Warning( // ℹ️
+        "There might be an issue here 🤔".into(),
+        4,
+    )),
+    LogEntry::from(Error { // ℹ️
+        message: "There _was_ an issue 😖".into(),
+        context: 4,
+        code: -1,
+    }),
+    LogEntry::from(Error { // ℹ️
         message: "Follow up".into(),
         context: 12,
         code: -7,
