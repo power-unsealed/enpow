@@ -198,7 +198,7 @@ Here, the `extract` macro comes into play, which does this automatically for us.
 
 Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `inner(derive(Clone))` attribute.
 
-> ⚠️ When combining both macros, `enpow` must be placed _after_ `extract` to work correctly. Also, the normal `derive` must be placed _after_ `extract`;
+> ⚠️ Macro Order: When combining both macros, `enpow` must be placed _after_ `extract` to work correctly. If the helper attribute `inner` is placed between `extract` and `enpow`, it will only be effective for `extract`. If it is placed after both `extract` and `enpow`, it will be effective for both macros. Also, the normal `derive` macro must be placed _after_ `extract` to work correctly.
 
 ```rust
 use enpow::{enpow, extract}; // ℹ️
