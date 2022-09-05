@@ -15,7 +15,7 @@ It is also possible to combine both macros when keeping them in the right order:
 Add the following to your `Cargo.toml` to include `enpow` as dependency to your project.
 ```toml
 [dependencies]
-enpow = "~1.0.2"
+enpow = "~1.1.0"
 ```
 
 # Use Case
