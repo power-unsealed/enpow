@@ -22,8 +22,7 @@ macro_rules! cache_access {
 pub struct InnerAttributeInfo {
     pub span: Span,
     pub derives: Vec<Path>,
-    pub type_naming: Option<TypeNaming>,
-    pub type_name: Option<Ident>,
+    pub type_name: Option<TypeNaming>,
     pub method_name: Option<Ident>,
 }
 
@@ -67,20 +66,12 @@ impl Parse for InnerAttributeInfo {
 
         // Extract the information from the arguments
         let mut derives = Vec::new();
-        let mut type_naming = None;
         let mut type_name = None;
         let mut method_name = None;
         for arg in args {
             match arg {
                 InnerArgument::Derive(paths) => {
                     derives.extend(paths);
-                }
-                InnerArgument::TypeNaming(naming) => {
-                    InnerAttributeInfo::save_into_or_redundant_err(
-                        naming,
-                        &mut type_naming,
-                        "type naming"
-                    )?;
                 }
                 InnerArgument::TypeName(ident) => {
                     InnerAttributeInfo::save_into_or_redundant_err(
@@ -102,7 +93,6 @@ impl Parse for InnerAttributeInfo {
         Ok(InnerAttributeInfo {
             span,
             derives,
-            type_naming,
             type_name,
             method_name,
         })
@@ -164,8 +154,7 @@ impl Parse for TypeNaming {
 
 enum InnerArgument {
     Derive(Vec<Path>),
-    TypeNaming(TypeNaming),
-    TypeName(Ident),
+    TypeName(TypeNaming),
     MethodName(Ident),
 }
 
@@ -180,14 +169,10 @@ impl Parse for InnerArgument {
                 let paths = args.into_iter().collect();
                 Ok(InnerArgument::Derive(paths))
             }
-            "type_naming" => {
-                let naming: TypeNaming = input.parse()?;
-                Ok(InnerArgument::TypeNaming(naming))
-            }
-            "type_name" => {
+            "type_name" | "type_names" => {
                 input.parse::<Token![=]>()?;
-                let ident: LitStr = input.parse()?;
-                Ok(InnerArgument::TypeName(ident.parse()?))
+                let naming: TypeNaming = input.parse()?;
+                Ok(InnerArgument::TypeName(naming))
             }
             "method_name" => {
                 input.parse::<Token![=]>()?;
@@ -243,18 +228,18 @@ impl EnumInfoAdapter for DeriveInput {
             if attr.is_inner_config() {
                 let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
 
-                if inner.type_name.is_some() || inner.method_name.is_some() {
+                if inner.method_name.is_some() {
                     return Err(Error::new(
                         inner.span,
-                        "Renaming only supported on variants, not on the enum itself."
+                        "Method renaming only supported on variants, not on the enum itself."
                     ));
                 }
 
-                if let Some(new) = &inner.type_naming {
+                if let Some(new) = &inner.type_name {
                     InnerAttributeInfo::save_into_or_redundant_err(
                         new.clone(),
                         &mut type_naming,
-                        "type naming"
+                        "type name"
                     )?;
                 }
 
@@ -263,9 +248,21 @@ impl EnumInfoAdapter for DeriveInput {
             }
         }
 
-        // If there is no type naming set, default to `EnumVar`
+        // If there is no type name set, default to `EnumVar`
         let type_naming = type_naming
             .unwrap_or(TypeNaming::EnumVariant(Span::call_site()));
+
+        // If there is a custom type name, make sure that it contains at least a {var} to make each
+        // variant distinctly named
+        if let TypeNaming::Custom(format, _) = &type_naming {
+            if !format.contains("{var}") {
+                return Err(Error::new(
+                    type_naming.span(),
+                    "Expected type name to contain at least `{var}` to give each variants \
+                    type a different name"
+                ));
+            }
+        }
 
         // Check for additional calls to `enpow` or `extract`
         let mut other_calls_from = None;
@@ -388,25 +385,20 @@ impl VariantInfo {
             }
         }
 
+
+
         // Buid the identifiers depending on the given variant name and possible renames
         let method_name = match method_name {
             Some(method_name) => method_name.to_string(),
             None => identifier.to_string().to_snake_case(),
         };
-        let type_idents = match type_name {
-            Some(type_name) => {
-                let self_ident = format_ident!("{type_name}");
-                let ref_ident = format_ident!("{type_name}Ref");
-                let mut_ident = format_ident!("{type_name}Mut");
-                SelfRefMut::new(self_ident, ref_ident, mut_ident)
-            }
-            None => {
-                let self_ident = parent.type_naming.format(enum_ident, &identifier);
-                let ref_ident = format_ident!("{self_ident}Ref");
-                let mut_ident = format_ident!("{self_ident}Mut");
-                SelfRefMut::new(self_ident, ref_ident, mut_ident)
-            }
+        let self_ident = match type_name {
+            Some(type_name) => type_name.format(enum_ident, &identifier),
+            None => parent.type_naming.format(enum_ident, &identifier),
         };
+        let ref_ident = format_ident!("{self_ident}Ref");
+        let mut_ident = format_ident!("{self_ident}Mut");
+        let type_idents = SelfRefMut::new(self_ident, ref_ident, mut_ident);
 
         // Extract doc comments
         let docs = attributes.extract_docs();
