@@ -43,7 +43,7 @@ assert_eq!(another_copy, IpAddressMultiRef { v4: &(0, 0, 0, 0), v6: &"::".into()
 
 With the argument `type_name` or `type_names`, the standard way of naming the generated structs can be changed. There are multiple naming schemes possible, depending on the keyword or string literal provided:
 
-* `type_name=EnumVar` [default] will give each type the name of the enum followed by the name of the corresponding variant, e.g. `IpAddressMulti`
+* `type_name=EnumVar` \[default\] will give each type the name of the enum followed by the name of the corresponding variant, e.g. `IpAddressMulti`
 * `type_name=Var` will let each type be named just like its corresponding variant, e.g. `Multi`
 * `type_name=VarEnum` will give each type the name of the corresponding variant followed by the name of the enum, e.g. `MultiIpAddress`
 * `type_name="My{enum}Var{var}"` will give each type the specified name with occurences of `{enum}` and `{var}` replaced by the name of the enum and the name of the corresponding variant, e.g. `MyIpAddressMulti`
