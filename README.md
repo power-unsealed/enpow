@@ -370,9 +370,11 @@ if !errors.is_empty() {
 
 This was just a quick introductory example for understanding the use and usage of this crate. See the macros' documentation for more details.
 
-# Inspiration
+# Inspiration and Alternatives
 
 While the first plan for this crate was limited to simple `unwrap` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
+
+Another alternative with partially different feature set would be [`enum_variant_type`](https://crates.io/crates/enum_variant_type).
 
 <br/>
 
