@@ -1,6 +1,6 @@
 # EnPow
 
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-informational?style=flat-square)](COPYRIGHT.md)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-informational?style=flat)](COPYRIGHT.md)
 
 EnPow is a procedural macro crate used to en**Pow**er user defined **En**ums with many methods usually known from the standard library's `Result<T, E>` and `Option<T>`. It can generate methods like `fn is_<variant>(&self) -> bool` or `fn unwrap_<variant>(self) -> <inner>`, supporting variants with named or unnamed fields (or none), as well as generics. See the `enpow` macro documentation for details on the specific methods supported.
 
