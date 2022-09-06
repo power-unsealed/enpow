@@ -429,7 +429,11 @@ impl VariantInfo {
 
         // Add a lifetime to the generics
         let mut ref_generics = generics.clone();
-        let lifetime_name = format!("'{}", type_idents.vself.to_string().to_snake_case());
+        let lifetime_name = format!(
+            "'__{}_{}",
+            enum_ident.to_string().to_snake_case(),
+            identifier.to_string().to_snake_case(),
+        );
         let ref_lifetime = Lifetime::new(&lifetime_name, Span::call_site());
         ref_generics
             .params
