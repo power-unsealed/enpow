@@ -36,26 +36,28 @@ mod helper;
 /// - `UnwrapVar`
 ///     * `fn unwrap_<variant>(self) -> <inner>`
 ///     Returns the inner data, if the enum value is of the expected type, otherwise panics.
-///     * `fn unwrap_<variant>_as_ref(self) -> <inner>`
-///     Returns a reference to the inner data, if the enum value is of the expected type,
-///     otherwise panics.
-///     * `fn unwrap_<variant>_as_mut(self) -> <inner>`
-///     Returns a mutable reference to the inner data, if the enum value is of the expected type,
-///     otherwise panics.
 ///     * `fn unwrap_<variant>_or(self, default: <inner>) -> <inner>`
 ///     Returns the inner data, if the enum value is of the expected type, otherwise returns the
 ///     given default value.
 ///     * `fn unwrap_<variant>_or_else(self, f: impl FnOnce(Self) -> <inner>) -> <inner>`
 ///     Returns the inner data, if the enum value is of the expected type, otherwise returns the
 ///     value that the given closure evaluated to.
+/// - `UnwrapVar, VarAsRef`
+///     * `fn unwrap_<variant>_as_ref(self) -> <ref_inner>`
+///     Returns a reference to the inner data, if the enum value is of the expected type,
+///     otherwise panics.
+///     * `fn unwrap_<variant>_as_mut(self) -> <mut_inner>`
+///     Returns a mutable reference to the inner data, if the enum value is of the expected type,
+///     otherwise panics.
 /// - `ExpectVar`
 ///     * `fn expect_<variant>(self, msg: &str) -> <inner>`
 ///     Returns the inner data, if the enum is of the expected type, otherwise panics with the
 ///     given error message.
-///     * `fn expect_<variant>_as_ref(self, msg: &str) -> <inner>`
+/// - `ExpectVar, VarAsRef`
+///     * `fn expect_<variant>_as_ref(self, msg: &str) -> <ref_inner>`
 ///     Returns a reference to the inner data, if the enum is of the expected type, otherwise
 ///     panics with the given error message.
-///     * `fn expect_<variant>_as_mut(self, msg: &str) -> <inner>`
+///     * `fn expect_<variant>_as_mut(self, msg: &str) -> <mut_inner>`
 ///     Returns a mutable reference to the inner data, if the enum is of the expected type,
 ///     otherwise panics with the given error message.
 /// - `All`

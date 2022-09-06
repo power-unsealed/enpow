@@ -171,7 +171,9 @@ pub enum EnpowType {
     IsVariant,
     VariantAsRef,
     UnwrapVariant,
+    UnwrapVariantAsRef,
     ExpectVariant,
+    ExpectVariantAsRef,
 }
 
 impl EnpowType {
@@ -186,7 +188,9 @@ impl EnpowType {
             EnpowType::IsVariant => false,
             EnpowType::VariantAsRef => false,
             EnpowType::UnwrapVariant => true,
+            EnpowType::UnwrapVariantAsRef => false,
             EnpowType::ExpectVariant => true,
+            EnpowType::ExpectVariantAsRef => false,
         }
     }
 
@@ -195,8 +199,10 @@ impl EnpowType {
             EnpowType::Variant => false,
             EnpowType::IsVariant => true,
             EnpowType::VariantAsRef => true,
-            EnpowType::UnwrapVariant => true,
-            EnpowType::ExpectVariant => true,
+            EnpowType::UnwrapVariant => false,
+            EnpowType::UnwrapVariantAsRef => true,
+            EnpowType::ExpectVariant => false,
+            EnpowType::ExpectVariantAsRef => true,
         }
     }
 
@@ -205,8 +211,10 @@ impl EnpowType {
             EnpowType::Variant => false,
             EnpowType::IsVariant => false,
             EnpowType::VariantAsRef => true,
-            EnpowType::UnwrapVariant => true,
-            EnpowType::ExpectVariant => true,
+            EnpowType::UnwrapVariant => false,
+            EnpowType::UnwrapVariantAsRef => true,
+            EnpowType::ExpectVariant => false,
+            EnpowType::ExpectVariantAsRef => true,
         }
     }
 }
@@ -258,6 +266,18 @@ impl Parse for EnpowAttributeInfo {
             }
         }
 
+        // If there are both (`UnwrapVar` OR `ExpectVar`) AND `VarAsRef`, generate the special
+        // methods
+        if methods.contains(&EnpowType::VariantAsRef) {
+            if methods.contains(&EnpowType::UnwrapVariant) {
+                methods.insert(EnpowType::UnwrapVariantAsRef);
+            }
+
+            if methods.contains(&EnpowType::ExpectVariant) {
+                methods.insert(EnpowType::ExpectVariantAsRef);
+            }
+        }
+
         Ok(EnpowAttributeInfo { methods })
     }
 }
@@ -284,13 +304,17 @@ impl VariantInfo {
                 }
                 EnpowType::UnwrapVariant => {
                     methods.push(self.build_unwrap(parent));
-                    methods.push(self.build_unwrap_as_ref(parent));
-                    methods.push(self.build_unwrap_as_mut(parent));
                     methods.push(self.build_unwrap_or());
                     methods.push(self.build_unwrap_or_else());
                 }
+                EnpowType::UnwrapVariantAsRef => {
+                    methods.push(self.build_unwrap_as_ref(parent));
+                    methods.push(self.build_unwrap_as_mut(parent));
+                }
                 EnpowType::ExpectVariant => {
                     methods.push(self.build_expect());
+                }
+                EnpowType::ExpectVariantAsRef => {
                     methods.push(self.build_expect_as_ref());
                     methods.push(self.build_expect_as_mut());
                 }
