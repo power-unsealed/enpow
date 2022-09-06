@@ -22,39 +22,25 @@ macro_rules! cache_access {
 pub struct InnerAttributeInfo {
     pub span: Span,
     pub derives: Vec<Path>,
+    pub type_naming: Option<TypeNaming>,
     pub type_name: Option<Ident>,
     pub method_name: Option<Ident>,
 }
 
 impl InnerAttributeInfo {
-    fn save_type_name_or_redundant_err(
-        new: Ident,
-        type_name: &mut Option<Ident>
+    fn save_into_or_redundant_err<T: Spanned>(
+        new: T,
+        option: &mut Option<T>,
+        what: &str,
     ) -> Result<(), Error> {
-        if let Some(old) = type_name {
-            Error::new(old.span(), "First name defined here").to_compile_error();
+        if let Some(old) = option {
+            Error::new(old.span(), &format!("First {what} defined here")).to_compile_error();
             Err(Error::new(
                 new.span(),
-                "Redundant naming detected"
+                &format!("Redundant {what} detected")
             ))
         } else {
-            *type_name = Some(new);
-            Ok(())
-        }
-    }
-    
-    fn save_method_name_or_redundant_err(
-        new: Ident,
-        method_name: &mut Option<Ident>
-    ) -> Result<(), Error> {
-        if let Some(old) = method_name {
-            Error::new(old.span(), "First name defined here").to_compile_error();
-            Err(Error::new(
-                new.span(),
-                "Redundant naming detected"
-            ))
-        } else {
-            *method_name = Some(new);
+            *option = Some(new);
             Ok(())
         }
     }
@@ -81,6 +67,7 @@ impl Parse for InnerAttributeInfo {
 
         // Extract the information from the arguments
         let mut derives = Vec::new();
+        let mut type_naming = None;
         let mut type_name = None;
         let mut method_name = None;
         for arg in args {
@@ -88,11 +75,26 @@ impl Parse for InnerAttributeInfo {
                 InnerArgument::Derive(paths) => {
                     derives.extend(paths);
                 }
+                InnerArgument::TypeNaming(naming) => {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        naming,
+                        &mut type_naming,
+                        "type naming"
+                    )?;
+                }
                 InnerArgument::TypeName(ident) => {
-                    InnerAttributeInfo::save_type_name_or_redundant_err(ident, &mut type_name)?;
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        ident,
+                        &mut type_name,
+                        "type name"
+                    )?;
                 }
                 InnerArgument::MethodName(ident) => {
-                    InnerAttributeInfo::save_method_name_or_redundant_err(ident, &mut method_name)?;
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        ident,
+                        &mut method_name,
+                        "method name"
+                    )?;
                 }
             }
         }
@@ -100,14 +102,69 @@ impl Parse for InnerAttributeInfo {
         Ok(InnerAttributeInfo {
             span,
             derives,
+            type_naming,
             type_name,
             method_name,
         })
     }
 }
 
+#[derive(Clone)]
+pub enum TypeNaming {
+    Variant(Span),
+    EnumVariant(Span),
+    VariantEnum(Span),
+    Custom(String, Span),
+}
+
+impl TypeNaming {
+    pub fn format(&self, enum_id: &Ident, var_id: &Ident) -> Ident {
+        match self {
+            TypeNaming::Variant(_) => Ident::new(&var_id.to_string(), Span::call_site()),
+            TypeNaming::EnumVariant(_) => format_ident!("{enum_id}{var_id}"),
+            TypeNaming::VariantEnum(_) => format_ident!("{var_id}{enum_id}"),
+            TypeNaming::Custom(format, _) => {
+                // Replace all {enum} and {var}
+                let output = format.replace("{enum}", &enum_id.to_string());
+                let output = output.replace("{var}", &var_id.to_string());
+
+                Ident::new(&output.to_string(), Span::call_site())
+            }
+        }
+    }
+}
+
+impl Spanned for TypeNaming {
+    fn span(&self) -> Span {
+        match self {
+            TypeNaming::Variant(span) => span.clone(),
+            TypeNaming::EnumVariant(span) => span.clone(),
+            TypeNaming::VariantEnum(span) => span.clone(),
+            TypeNaming::Custom(_, span) => span.clone(),
+        }
+    }
+}
+
+impl Parse for TypeNaming {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        if input.peek(LitStr) {
+            let format: LitStr = input.parse()?;
+            Ok(TypeNaming::Custom(format.value(), format.span()))
+        } else {
+            let ident: Ident = input.parse()?;
+            match ident.to_string().as_str() {
+                "Var" => Ok(TypeNaming::Variant(ident.span())),
+                "EnumVar" => Ok(TypeNaming::EnumVariant(ident.span())),
+                "VarEnum" => Ok(TypeNaming::VariantEnum(ident.span())),
+                _ => Err(Error::new(ident.span(), "Unexpected type naming scheme")),
+            }
+        }
+    }
+}
+
 enum InnerArgument {
     Derive(Vec<Path>),
+    TypeNaming(TypeNaming),
     TypeName(Ident),
     MethodName(Ident),
 }
@@ -122,6 +179,10 @@ impl Parse for InnerArgument {
                 let args: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
                 let paths = args.into_iter().collect();
                 Ok(InnerArgument::Derive(paths))
+            }
+            "type_naming" => {
+                let naming: TypeNaming = input.parse()?;
+                Ok(InnerArgument::TypeNaming(naming))
             }
             "type_name" => {
                 input.parse::<Token![=]>()?;
@@ -145,6 +206,7 @@ pub struct EnumInfo {
     pub inners: Vec<(usize, InnerAttributeInfo)>,
     /// All `inner(derive())` directly applied to the enum itself
     pub derives: Vec<Path>,
+    pub type_naming: TypeNaming,
     pub generics: Generics,
     pub identifier: Ident,
     pub visibility: Visibility,
@@ -176,6 +238,7 @@ impl EnumInfoAdapter for DeriveInput {
         // Parse all `inner` config attributes
         let mut inners = Vec::new();
         let mut derives = Vec::new();
+        let mut type_naming = None;
         for (i, attr) in self.attrs.iter().enumerate() {
             if attr.is_inner_config() {
                 let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
@@ -187,10 +250,22 @@ impl EnumInfoAdapter for DeriveInput {
                     ));
                 }
 
+                if let Some(new) = &inner.type_naming {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        new.clone(),
+                        &mut type_naming,
+                        "type naming"
+                    )?;
+                }
+
                 derives.extend(inner.derives.iter().cloned());
                 inners.push((i, inner));
             }
         }
+
+        // If there is no type naming set, default to `EnumVar`
+        let type_naming = type_naming
+            .unwrap_or(TypeNaming::EnumVariant(Span::call_site()));
 
         // Check for additional calls to `enpow` or `extract`
         let mut other_calls_from = None;
@@ -207,6 +282,7 @@ impl EnumInfoAdapter for DeriveInput {
             attributes: self.attrs,
             generics: self.generics,
             derives,
+            type_naming,
             inners,
             identifier: self.ident,
             visibility: self.vis,
@@ -292,11 +368,19 @@ impl VariantInfo {
                 let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
                 
                 if let Some(new) = &inner.type_name {
-                    InnerAttributeInfo::save_type_name_or_redundant_err(new.clone(), &mut type_name)?;
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        new.clone(),
+                        &mut type_name,
+                        "type name"
+                    )?;
                 }
                 
                 if let Some(new) = &inner.method_name {
-                    InnerAttributeInfo::save_method_name_or_redundant_err(new.clone(), &mut method_name)?; 
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        new.clone(),
+                        &mut method_name,
+                        "method name"
+                    )?; 
                 }
 
                 derives.extend(inner.derives.iter().cloned());
@@ -317,9 +401,9 @@ impl VariantInfo {
                 SelfRefMut::new(self_ident, ref_ident, mut_ident)
             }
             None => {
-                let self_ident = format_ident!("{enum_ident}{identifier}");
-                let ref_ident = format_ident!("{enum_ident}{identifier}Ref");
-                let mut_ident = format_ident!("{enum_ident}{identifier}Mut");
+                let self_ident = parent.type_naming.format(enum_ident, &identifier);
+                let ref_ident = format_ident!("{self_ident}Ref");
+                let mut_ident = format_ident!("{self_ident}Mut");
                 SelfRefMut::new(self_ident, ref_ident, mut_ident)
             }
         };
