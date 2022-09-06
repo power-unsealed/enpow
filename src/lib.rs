@@ -177,44 +177,8 @@ mod helper;
 /// assert_eq!(IpAddress::None.is_v4_and(|_| true), false);
 /// ```
 ///
-/// ## Configuration with `inner`
-///
-/// Attaching the additional configuration attribute `inner()` with the argument `derive()`
-/// __below__ `enpow` enables to add auto trait derives to the automatically generated types. `Ref`
-/// structs always automatically derive `Clone` and `Copy`, while `Mut` structs are prohibited from
-/// deriving these traits. This exclusion will be handled automatically by the macro. `inner()`
-/// also allows for renaming of the generated types and methods on a per-variant base. The syntax
-/// for this is `type_name="NewTypeName"` and `method_name="new_method_name"`.
-///
-/// ```rust
-/// # use enpow::enpow;
-/// #
-/// #[enpow(All)]
-/// #[inner(derive(Debug, PartialEq))]
-/// enum IpAddress {
-///     None,
-///     V4(u8, u8, u8, u8),
-///     V6(String),
-///     #[inner(type_name="MultiAddress", method_name="mul", derive(Clone))]
-///     Multi {
-///         v4: (u8, u8, u8, u8),
-///         v6: String,
-///     },
-/// }
-///
-/// // Using PartialEq, Debug, and Clone derive
-/// assert_eq!(
-///     IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() }.unwrap_mul(),
-///     MultiAddress { v4: (0, 0, 0, 0), v6: "::".into() }.clone()
-/// );
-///
-/// // Using automatic Copy derive on Ref struct
-/// let ip = IpAddress::Multi { v4: (0, 0, 0, 0), v6: "::".into() };
-/// let copy = ip.unwrap_mul_as_ref();
-/// let another_copy = copy;
-/// assert_eq!(copy, MultiAddressRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
-/// assert_eq!(another_copy, MultiAddressRef { v4: &(0, 0, 0, 0), v6: &"::".into() });
-/// ```
+#[doc = include_str!("../misc/inner_common.md")]
+#[doc = include_str!("../misc/inner_methods.md")]
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]
 pub fn enpow(
@@ -299,39 +263,8 @@ pub fn enpow(
 ///
 /// An additional `derive` macro attached to the enum should come __after__ `extract`
 /// to make sure the automatically derived implementations match the changed enum structure.
-///
-/// ## Configuration with `inner`
-///
-/// Attaching the additional configuration attribute `inner()` with the argument `derive()`
-/// __below__ `extract` enables to add auto trait derives to the automatically generated types.
-/// `inner()` also allows for renaming of the generated types on a per-variant base. The syntax
-/// for this is `type_name="NewTypeName"`.
-///
-/// ```rust
-/// # use enpow::extract;
-/// #
-/// #[extract]
-/// #[inner(derive(Clone, Debug, PartialEq))]
-/// enum IpAddress {
-///     #[inner(type_name="NoIp", derive(Copy))]
-///     None,
-///     #[inner(type_name="IpV4", derive(Copy))]
-///     V4(u8, u8, u8, u8),
-///     #[inner(type_name="IpV6")]
-///     V6(String),
-///     #[inner(type_name="MultiIp")]
-///     Multi {
-///         v4: (u8, u8, u8, u8),
-///         v6: String,
-///     },
-/// }
-///
-/// // Using PartialEq and Debug derive
-/// assert_eq!(
-///     MultiIp { v4: (0, 0, 0, 0), v6: "::".into() },
-///     MultiIp { v4: (0, 0, 0, 0), v6: "::".into() }
-/// );
-/// ```
+/// 
+#[doc = include_str!("../misc/inner_common.md")]
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]
 pub fn extract(
