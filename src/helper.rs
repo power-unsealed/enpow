@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
     visit::Visit, Attribute, Data, DataEnum, DeriveInput, Error, Fields, GenericParam, Generics,
@@ -139,6 +139,26 @@ impl Parse for TypeNaming {
     fn parse(input: ParseStream) -> Result<Self, Error> {
         if input.peek(LitStr) {
             let format: LitStr = input.parse()?;
+
+            // Check whether it is generating valid idents
+            let output = format.value().replace("{enum}", "A");
+            let output = output.replace("{var}", "B");
+            let tokens = match TokenStream::from_str(&output) {
+                Ok(tokens) => tokens,
+                Err(_) => {
+                    return Err(Error::new(
+                        format.span(),
+                        "Does not format into valid identifiers"
+                    ));
+                }
+            };
+            if let Err(_) = syn::parse2::<Ident>(tokens) {
+                return Err(Error::new(
+                    format.span(),
+                    "Does not format into valid identifiers"
+                ));
+            }
+
             Ok(TypeNaming::Custom(format.value(), format.span()))
         } else {
             let ident: Ident = input.parse()?;

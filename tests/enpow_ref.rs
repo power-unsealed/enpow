@@ -1,12 +1,11 @@
 use enpow::enpow;
 
 #[enpow(UnwrapVar, ExpectVar, VarAsRef)]
-#[inner(derive(Debug, PartialEq))]
+#[inner(type_names=Var, derive(Debug, PartialEq))]
 pub enum Test<'a> {
     A,
     B(&'a str),
     C(&'a str, usize),
-    #[inner(type_name="D")]
     D { string: &'a str },
 }
 

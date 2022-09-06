@@ -2,7 +2,7 @@ mod outer {
     use enpow::enpow;
 
     #[enpow(All)]
-    #[inner(derive(Debug, PartialEq))]
+    #[inner(type_names=Var, derive(Debug, PartialEq))]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
         /// Docs for `A`
@@ -20,7 +20,6 @@ mod outer {
             S,
         ),
         /// Docs for `D`
-        #[inner(type_name="D")]
         D {
             /// Docs for `D::a`
             a: T,
