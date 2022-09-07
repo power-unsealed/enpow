@@ -371,7 +371,7 @@ This was just a quick introductory example for understanding the use and usage o
 
 While the first plan for this crate was limited to simple `unwrap` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
 
-Another alternative with partially different feature set would be [`enum_variant_type`](https://crates.io/crates/enum_variant_type).
+Another alternative with partially different feature set is [`enum_variant_type`](https://crates.io/crates/enum_variant_type). Its main focus is generating separate types for every enum variant.
 
 <br/>
 
