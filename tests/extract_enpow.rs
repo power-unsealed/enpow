@@ -43,5 +43,5 @@ fn test() {
 
     // Check whether inner(derive()) is applied to both macros
     assert_eq!(Inner::from(C(0, 'c')), Inner::C(C(0, 'c')));
-    assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_d(), D { a: 0, b: 'd' });
+    assert_eq!(Inner::from(D { a: 0, b: 'd' }).unwrap_d(), D { a: 0, b: 'd' });
 }
