@@ -136,6 +136,44 @@ fn variant_as_ref() {
 
 #[test]
 #[rustfmt::skip]
+fn map_variant() {
+    assert_eq!(Inner::<i32, char>::A.map_a_or((), |a| a), ());
+    assert_eq!(Inner::<i32, char>::A.map_b_or(0, |_| unreachable!()), 0);
+    assert_eq!(Inner::<i32, char>::A.map_c_or((0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::A.map_d_or(D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_b_or(1, |b| b), 0);
+    assert_eq!(Inner::<i32, char>::B(0).map_c_or((0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::B(0).map_d_or(D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_a_or((), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_c_or((1, 'c'), |c| c), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_d_or(D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_a_or((), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_b_or(0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_d_or(D { a: 1, b: 'd' }, |d| d), D { a: 0, b: 'd' });
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_a_or((), |_| unreachable!()), ());
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_b_or(0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_c_or((0, 'c'), |_| unreachable!()), (0, 'c'));
+    
+    assert_eq!(Inner::<i32, char>::A.map_a_or_else(|_| unreachable!(), |a| a), ());
+    assert_eq!(Inner::<i32, char>::A.map_b_or_else(|_| 0, |_| unreachable!()), 0);
+    assert_eq!(Inner::<i32, char>::A.map_c_or_else(|_| (0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::A.map_d_or_else(|_| D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_b_or_else(|_| unreachable!(), |b| b), 0);
+    assert_eq!(Inner::<i32, char>::B(0).map_c_or_else(|_| (0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::B(0).map_d_or_else(|_| D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_a_or_else(|_| (), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_c_or_else(|_| unreachable!(), |c| c), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_d_or_else(|_| D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_a_or_else(|_| (), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_b_or_else(|_| 0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_d_or_else(|_| unreachable!(), |d| d), D { a: 0, b: 'd' });
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_a_or_else(|_| (), |_| unreachable!()), ());
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_b_or_else(|_| 0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_c_or_else(|_| (0, 'c'), |_| unreachable!()), (0, 'c'));
+}
+
+#[test]
+#[rustfmt::skip]
 fn unwrap_variant() {
     Inner::<i32, char>::A.unwrap_a();
     catch_unwind(|| Inner::<i32, char>::A.unwrap_b()).unwrap_err();

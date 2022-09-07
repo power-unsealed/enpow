@@ -33,6 +33,14 @@ mod helper;
 ///     * `fn <variant>_as_mut(&mut self) -> Option<<mut_inner>>`
 ///     Returns a mutable reference to the inner data, if the enum value is of the expected type,
 ///     otherwise returns `None`.
+/// - `MapVar`
+///     * `fn map_<variant>_or<T>(self, default: T, op:  impl FnOnce(<inner>) -> T) -> T`
+///     Applies the given operation to the inner data and returns its result, if the enum value is
+///     of the expected type, otherwise returns the given default value.
+///     * `fn map_<variant>_or_else<T>(self, default: impl FnOnce(Self) -> T, op: impl FnOnce(<inner>) -> T) -> T`
+///     Applies the given operation to the inner data and returns its result, if the enum value is
+///     of the expected type, otherwise returns the value that the given default closure evaluates
+///     to.
 /// - `UnwrapVar`
 ///     * `fn unwrap_<variant>(self) -> <inner>`
 ///     Returns the inner data, if the enum value is of the expected type, otherwise panics.
@@ -108,6 +116,26 @@ mod helper;
 ///     *v4.3 = 2;
 /// }
 /// assert_eq!(ip, IpAddress::V4(192, 168, 0, 2));
+/// 
+/// // fn map_<variant>_or()
+/// assert_eq!(
+///     IpAddress::V4(192, 168, 0, 1).map_v4_or((0, 0, 0, 0), |mut v4| { v4.3 = 2; v4 }),
+///     (192, 168, 0, 2)
+/// );
+/// assert_eq!(
+///     IpAddress::None.map_v6_or("::".into(), |v6| v6),
+///     "::".to_owned()
+/// );
+/// 
+/// // fn map_<variant>_or_else()
+/// assert_eq!(
+///     IpAddress::V6("::".into()).map_v6_or_else(|_| unreachable!(), |v6| v6 + "1"),
+///     "::1".to_owned()
+/// );
+/// assert_eq!(
+///     IpAddress::None.map_v4_or_else(|_| (0, 0, 0, 0), |_| unreachable!()),
+///     (0, 0, 0, 0)
+/// );
 ///
 /// // fn unwrap_<variant>()
 /// assert_eq!(IpAddress::V6("::1".into()).unwrap_v6(), "::1".to_owned());

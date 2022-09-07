@@ -171,6 +171,7 @@ pub enum EnpowType {
     Variant,
     IsVariant,
     VariantAsRef,
+    MapVariant,
     UnwrapVariant,
     UnwrapVariantAsRef,
     ExpectVariant,
@@ -188,6 +189,7 @@ impl EnpowType {
             EnpowType::Variant => true,
             EnpowType::IsVariant => false,
             EnpowType::VariantAsRef => false,
+            EnpowType::MapVariant => true,
             EnpowType::UnwrapVariant => true,
             EnpowType::UnwrapVariantAsRef => false,
             EnpowType::ExpectVariant => true,
@@ -200,6 +202,7 @@ impl EnpowType {
             EnpowType::Variant => false,
             EnpowType::IsVariant => true,
             EnpowType::VariantAsRef => true,
+            EnpowType::MapVariant => false,
             EnpowType::UnwrapVariant => false,
             EnpowType::UnwrapVariantAsRef => true,
             EnpowType::ExpectVariant => false,
@@ -212,6 +215,7 @@ impl EnpowType {
             EnpowType::Variant => false,
             EnpowType::IsVariant => false,
             EnpowType::VariantAsRef => true,
+            EnpowType::MapVariant => false,
             EnpowType::UnwrapVariant => false,
             EnpowType::UnwrapVariantAsRef => true,
             EnpowType::ExpectVariant => false,
@@ -240,6 +244,7 @@ impl Parse for EnpowAttributeInfo {
                     methods.insert(EnpowType::Variant);
                     methods.insert(EnpowType::IsVariant);
                     methods.insert(EnpowType::VariantAsRef);
+                    methods.insert(EnpowType::MapVariant);
                     methods.insert(EnpowType::UnwrapVariant);
                     methods.insert(EnpowType::ExpectVariant);
                 }
@@ -251,6 +256,9 @@ impl Parse for EnpowAttributeInfo {
                 }
                 "VarAsRef" => {
                     methods.insert(EnpowType::VariantAsRef);
+                }
+                "MapVar" => {
+                    methods.insert(EnpowType::MapVariant);
                 }
                 "UnwrapVar" => {
                     methods.insert(EnpowType::UnwrapVariant);
@@ -302,6 +310,10 @@ impl VariantInfo {
                 EnpowType::VariantAsRef => {
                     methods.push(self.build_as_ref());
                     methods.push(self.build_as_mut());
+                }
+                EnpowType::MapVariant => {
+                    methods.push(self.build_map_or());
+                    methods.push(self.build_map_or_else());
                 }
                 EnpowType::UnwrapVariant => {
                     methods.push(self.build_unwrap(parent));

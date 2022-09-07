@@ -1070,6 +1070,57 @@ impl VariantInfo {
             }
         }
     }
+
+    pub fn build_map_or(&mut self) -> TokenStream {
+        let data_type = self.build_self_type();
+        let pattern = self.build_match_pattern();
+        let construction = self.build_self_construction();
+        let method_name = &self.method_name;
+        let visibility = &self.visibility;
+
+        let fn_ident = format_ident!("map_{method_name}_or");
+
+        quote! {
+            /// Applies the given operation to the inner data and returns its result, if the enum
+            /// value is of the expected type, otherwise returns the given default value.
+            #visibility fn #fn_ident<__T>(
+                self,
+                default: __T,
+                op: impl FnOnce(#data_type) -> __T
+            ) -> __T {
+                match self {
+                    #pattern => op(#construction),
+                    _ => default,
+                }
+            }
+        }
+    }
+
+    pub fn build_map_or_else(&mut self) -> TokenStream {
+        let data_type = self.build_self_type();
+        let pattern = self.build_match_pattern();
+        let construction = self.build_self_construction();
+        let method_name = &self.method_name;
+        let visibility = &self.visibility;
+
+        let fn_ident = format_ident!("map_{method_name}_or_else");
+
+        quote! {
+            /// Applies the given operation to the inner data and returns its result, if the enum
+            /// value is of the expected type, otherwise returns the value that the given default
+            /// closure evaluates to.
+            #visibility fn #fn_ident<__T>(
+                self,
+                default: impl FnOnce(Self) -> __T,
+                op: impl FnOnce(#data_type) -> __T
+            ) -> __T {
+                match self {
+                    #pattern => op(#construction),
+                    other => default(other),
+                }
+            }
+        }
+    }
 }
 
 pub trait VariantInfoAdapter {
