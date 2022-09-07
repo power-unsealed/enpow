@@ -2,7 +2,7 @@ mod outer {
     use enpow::enpow;
 
     #[enpow(All)]
-    #[enpow_derive(Debug, PartialEq)]
+    #[inner(type_names=Var, derive(Debug, PartialEq))]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
         /// Docs for `A`
@@ -48,7 +48,7 @@ fn variant() {
     assert_eq!(Inner::<i32, char>::C(0, 'c').d(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').a(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').b(), None);
-    assert_eq!(Inner::D { a: 0, b: 'd' }.d(), Some(InnerD { a: 0, b: 'd' }));
+    assert_eq!(Inner::D { a: 0, b: 'd' }.d(), Some(D { a: 0, b: 'd' }));
     assert_eq!(Inner::D { a: 0, b: 'd' }.a(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.b(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.c(), None);
@@ -111,7 +111,7 @@ fn variant_as_ref() {
     assert_eq!(Inner::<i32, char>::C(0, 'c').d_as_ref(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').a_as_ref(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').b_as_ref(), None);
-    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_ref(), Some(InnerDRef { a: &0, b: &'d' }));
+    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_ref(), Some(DRef { a: &0, b: &'d' }));
     assert_eq!(Inner::D { a: 0, b: 'd' }.a_as_ref(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.b_as_ref(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.c_as_ref(), None);
@@ -128,10 +128,48 @@ fn variant_as_ref() {
     assert_eq!(Inner::<i32, char>::C(0, 'c').d_as_mut(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').a_as_mut(), None);
     assert_eq!(Inner::<i32, char>::C(0, 'c').b_as_mut(), None);
-    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_mut(), Some(InnerDMut { a: &mut 0, b: &mut 'd' }));
+    assert_eq!(Inner::D { a: 0, b: 'd' }.d_as_mut(), Some(DMut { a: &mut 0, b: &mut 'd' }));
     assert_eq!(Inner::D { a: 0, b: 'd' }.a_as_mut(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.b_as_mut(), None);
     assert_eq!(Inner::D { a: 0, b: 'd' }.c_as_mut(), None);
+}
+
+#[test]
+#[rustfmt::skip]
+fn map_variant() {
+    assert_eq!(Inner::<i32, char>::A.map_a_or((), |a| a), ());
+    assert_eq!(Inner::<i32, char>::A.map_b_or(0, |_| unreachable!()), 0);
+    assert_eq!(Inner::<i32, char>::A.map_c_or((0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::A.map_d_or(D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_b_or(1, |b| b), 0);
+    assert_eq!(Inner::<i32, char>::B(0).map_c_or((0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::B(0).map_d_or(D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_a_or((), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_c_or((1, 'c'), |c| c), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_d_or(D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_a_or((), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_b_or(0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_d_or(D { a: 1, b: 'd' }, |d| d), D { a: 0, b: 'd' });
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_a_or((), |_| unreachable!()), ());
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_b_or(0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_c_or((0, 'c'), |_| unreachable!()), (0, 'c'));
+    
+    assert_eq!(Inner::<i32, char>::A.map_a_or_else(|_| unreachable!(), |a| a), ());
+    assert_eq!(Inner::<i32, char>::A.map_b_or_else(|_| 0, |_| unreachable!()), 0);
+    assert_eq!(Inner::<i32, char>::A.map_c_or_else(|_| (0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::A.map_d_or_else(|_| D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_b_or_else(|_| unreachable!(), |b| b), 0);
+    assert_eq!(Inner::<i32, char>::B(0).map_c_or_else(|_| (0, 'c'), |_| unreachable!()), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::B(0).map_d_or_else(|_| D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).map_a_or_else(|_| (), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_c_or_else(|_| unreachable!(), |c| c), (0, 'c'));
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_d_or_else(|_| D { a: 0, b: 'd' }, |_| unreachable!()), D { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_a_or_else(|_| (), |_| unreachable!()), ());
+    assert_eq!(Inner::<i32, char>::C(0, 'c').map_b_or_else(|_| 0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_d_or_else(|_| unreachable!(), |d| d), D { a: 0, b: 'd' });
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_a_or_else(|_| (), |_| unreachable!()), ());
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_b_or_else(|_| 0, |_| unreachable!()), 0);
+    assert_eq!(Inner::D { a: 0, b: 'd' }.map_c_or_else(|_| (0, 'c'), |_| unreachable!()), (0, 'c'));
 }
 
 #[test]
@@ -191,16 +229,16 @@ fn unwrap_variant() {
     assert_eq!(Inner::<i32, char>::A.unwrap_a_or(()), ());
     assert_eq!(Inner::<i32, char>::A.unwrap_b_or(0), 0);
     assert_eq!(Inner::<i32, char>::A.unwrap_c_or((0, 'c')), (0, 'c'));
-    assert_eq!(Inner::<i32, char>::A.unwrap_d_or(InnerD { a: 0, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::A.unwrap_d_or(D { a: 0, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::<i32, char>::B(0).unwrap_b_or(1), 0);
     assert_eq!(Inner::<i32, char>::B(0).unwrap_c_or((0, 'c')), (0, 'c'));
-    assert_eq!(Inner::<i32, char>::B(0).unwrap_d_or(InnerD { a: 0, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).unwrap_d_or(D { a: 0, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::<i32, char>::B(0).unwrap_a_or(()), ());
     assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_c_or((1, 'c')), (0, 'c'));
-    assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_d_or(InnerD { a: 0, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_d_or(D { a: 0, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_a_or(()), ());
     assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_b_or(0), 0);
-    assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_d_or(InnerD { a: 1, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_d_or(D { a: 1, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_a_or(()), ());
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_b_or(0), 0);
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_c_or((0, 'c')), (0, 'c'));
@@ -208,16 +246,16 @@ fn unwrap_variant() {
     assert_eq!(Inner::<i32, char>::A.unwrap_a_or_else(|_| ()), ());
     assert_eq!(Inner::<i32, char>::A.unwrap_b_or_else(|_| 0), 0);
     assert_eq!(Inner::<i32, char>::A.unwrap_c_or_else(|_| (0, 'c')), (0, 'c'));
-    assert_eq!(Inner::<i32, char>::A.unwrap_d_or_else(|_| InnerD { a: 0, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::A.unwrap_d_or_else(|_| D { a: 0, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::<i32, char>::B(0).unwrap_b_or_else(|_| 1), 0);
     assert_eq!(Inner::<i32, char>::B(0).unwrap_c_or_else(|_| (0, 'c')), (0, 'c'));
-    assert_eq!(Inner::<i32, char>::B(0).unwrap_d_or_else(|_| InnerD { a: 0, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::B(0).unwrap_d_or_else(|_| D { a: 0, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::<i32, char>::B(0).unwrap_a_or_else(|_| ()), ());
     assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_c_or_else(|_| (1, 'c')), (0, 'c'));
-    assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_d_or_else(|_| InnerD { a: 0, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_d_or_else(|_| D { a: 0, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_a_or_else(|_| ()), ());
     assert_eq!(Inner::<i32, char>::C(0, 'c').unwrap_b_or_else(|_| 0), 0);
-    assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_d_or_else(|_| InnerD { a: 1, b: 'd' }), InnerD { a: 0, b: 'd' });
+    assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_d_or_else(|_| D { a: 1, b: 'd' }), D { a: 0, b: 'd' });
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_a_or_else(|_| ()), ());
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_b_or_else(|_| 0), 0);
     assert_eq!(Inner::D { a: 0, b: 'd' }.unwrap_c_or_else(|_| (0, 'c')), (0, 'c'));

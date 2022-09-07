@@ -1,19 +1,23 @@
+use outer::*;
+
 mod outer {
     use enpow::{enpow, extract};
 
-    #[extract(Single, Unnamed, Named)]
-    #[extract_derive(Debug, PartialEq)]
-    #[enpow(IsVar)]
+    #[extract(Single, Unnamed)]
+    #[enpow(IsVar, UnwrapVar)]
+    #[inner(derive(Debug, PartialEq))]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
         /// Docs for `A`
         A,
         /// Docs for `B`
+        #[inner(method_name="bee")]
         B(
             /// Docs for `B::0`
             T,
         ),
         /// Docs for `C`
+        #[inner(type_name="C", method_name="sea")]
         C(
             /// Docs for `C::0`
             T,
@@ -21,6 +25,7 @@ mod outer {
             S,
         ),
         /// Docs for `D`
+        #[inner(type_name="D")]
         D {
             /// Docs for `D::a`
             a: T,
@@ -32,8 +37,11 @@ mod outer {
 
 #[test]
 fn test() {
-    assert!(outer::Inner::<i32, char>::A.is_a());
-    assert!(outer::Inner::<i32, char>::B(outer::InnerB(0)).is_b());
-    assert!(outer::Inner::<i32, char>::C(outer::InnerC(0, 'c')).is_c());
-    assert!(outer::Inner::<i32, char>::D(outer::InnerD { a: 0, b: 'd' }).is_d());
+    assert!(Inner::<i32, char>::A.is_a());
+    assert!(Inner::<i32, char>::from(InnerB(0)).is_bee());
+    assert!(Inner::from(C(0, 'c')).is_sea());
+
+    // Check whether inner(derive()) is applied to both macros
+    assert_eq!(Inner::from(C(0, 'c')), Inner::C(C(0, 'c')));
+    assert_eq!(Inner::from(D { a: 0, b: 'd' }).unwrap_d(), D { a: 0, b: 'd' });
 }

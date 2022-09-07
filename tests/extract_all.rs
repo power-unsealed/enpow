@@ -1,8 +1,10 @@
+use outer::*;
+
 mod outer {
     use enpow::extract;
 
     #[extract(All)]
-    #[extract_derive(Debug, PartialEq)]
+    #[inner(type_names="{enum}Var{var}", derive(Debug, PartialEq))]
     #[derive(Debug, PartialEq)]
     pub enum Inner<T, S: ToString> {
         /// Docs for `A`
@@ -13,6 +15,7 @@ mod outer {
             T,
         ),
         /// Docs for `C`
+        #[inner(type_name="{var}Sea")]
         C(
             /// Docs for `C::0`
             T,
@@ -32,8 +35,15 @@ mod outer {
 #[test]
 #[allow(path_statements)]
 fn test() {
-    outer::InnerA;
-    outer::InnerB(0);
-    outer::InnerC('a', 0);
-    outer::InnerD { a: 'a', b: 0 };
+    // Use automatically generated structs
+    InnerVarA;
+    InnerVarB(0);
+    CSea('a', 0);
+    InnerVarD { a: 'a', b: 0 };
+
+    // Use automatic From implementation
+    assert_eq!(Inner::from(InnerVarA), Inner::A::<u32, char>(InnerVarA));
+    assert_eq!(Inner::from(InnerVarB(0)), Inner::B::<u32, char>(InnerVarB(0)));
+    assert_eq!(Inner::from(CSea('c', 0)), Inner::C(CSea('c', 0)));
+    assert_eq!(Inner::from(InnerVarD { a: 0, b: 'd' }), Inner::D(InnerVarD { a: 0, b: 'd' }));
 }

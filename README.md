@@ -1,19 +1,19 @@
 # EnPow
 
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-informational?style=flat-square)](COPYRIGHT.md)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-informational?style=flat)](COPYRIGHT.md)
 
 EnPow is a procedural macro crate used to en**Pow**er user defined **En**ums with many methods usually known from the standard library's `Result<T, E>` and `Option<T>`. It can generate methods like `fn is_<variant>(&self) -> bool` or `fn unwrap_<variant>(self) -> <inner>`, supporting variants with named or unnamed fields (or none), as well as generics. See the `enpow` macro documentation for details on the specific methods supported.
 
 Additionally, this crate allows to extract the data associated with each enum variant into separate structs, allowing for more compact code e.g. when designing an Abstract Syntax Tree. See the `extract` macro documentation for more details.
 
-It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as demonstrated in the following use case.
+It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as further explained in the following use case. Nevertheless, both macros can be used indenpendently from each other.
 
 # Installation
 
 Add the following to your `Cargo.toml` to include `enpow` as dependency to your project.
 ```toml
 [dependencies]
-enpow = "~1.0.2"
+enpow = "~2.0.0"
 ```
 
 # Use Case
@@ -186,357 +186,25 @@ if !errors.is_empty() {
 }
 ```
 
-<details>
-<summary>ℹ️ Click to reveal generated code</summary>
+Even though this code is already more concise, there is still a rough edge. When collecting all the errors, they still are returned as `Vec<LogEntry>` with no guarantee by the type system that this collection would actually contain only errors. We could solve this problem by returning from `get_errors()` the type `LogEntryError<C>` that was already constructed to aid the `unwrap_error()` method.
 
-```rust
-#[derive(Clone)]
-pub enum LogEntry<C: ToString + Clone> {
-    /// A simple note without context
-    Note(
-        /// Note's message
-        String,
-    ),
-    /// A warning with a given context
-    Warning(
-        /// Warning's message
-        String,
-        /// Context of the warning
-        C,
-    ),
-    /// An error message with error code and context
-    Error {
-        /// Error message
-        message: String,
-        /// Context of the error
-        context: C,
-        /// Error code
-        code: i16,
-    },
-}
-
-#[allow(unused)]
-#[derive()]
-/// An error message with error code and context
-pub struct LogEntryError<C: ToString + Clone> {
-    /// Error message
-    pub message: String,
-    /// Context of the error
-    pub context: C,
-    /// Error code
-    pub code: i16,
-}
-
-#[allow(unused)]
-#[derive(Clone, Copy)]
-/// An error message with error code and context
-pub struct LogEntryErrorRef<'log_entry_error, C: ToString + Clone> {
-    /// Error message
-    pub message: &'log_entry_error String,
-    /// Context of the error
-    pub context: &'log_entry_error C,
-    /// Error code
-    pub code: &'log_entry_error i16,
-}
-
-#[allow(unused)]
-#[derive()]
-/// An error message with error code and context
-pub struct LogEntryErrorMut<'log_entry_error, C: ToString + Clone> {
-    /// Error message
-    pub message: &'log_entry_error mut String,
-    /// Context of the error
-    pub context: &'log_entry_error mut C,
-    /// Error code
-    pub code: &'log_entry_error mut i16,
-}
-
-#[automatically_derived]
-#[allow(unused)]
-impl<C: ToString + Clone> LogEntry<C> {
-    /// Returns `true`, if the enum value is of the expected type, otherwise returns
-    /// `false`.
-    pub fn is_note(&self) -> bool {
-        match self {
-            LogEntry::Note(f0) => true,
-            _ => false,
-        }
-    }
-    
-    /// Returns `true`, if the enum value is of the expected type and the given closure
-    /// evalutates to `true`, otherwise returns `false`.
-    pub fn is_note_and<'log_entry_note>(
-        &'log_entry_note self,
-        f: impl FnOnce(&'log_entry_note String) -> bool,
-    ) -> bool {
-        match self {
-            LogEntry::Note(f0) => f(f0),
-            _ => false,
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// panics.
-    pub fn unwrap_note(self) -> String {
-        match self {
-            LogEntry::Note(f0) => f0,
-            _ => panic!("Failed unwrapping to LogEntry::Note. Unexpected variant"),
-        }
-    }
-    
-    /// Returns a reference to the inner data, if the enum value is of the expected type,
-    /// otherwise panics.
-    pub fn unwrap_note_as_ref<'log_entry_note>(&'log_entry_note self) -> &'log_entry_note String {
-        match self {
-            LogEntry::Note(f0) => f0,
-            _ => panic!("Failed unwrapping to LogEntry::Note. Unexpected variant"),
-        }
-    }
-    
-    /// Returns a mutable reference to the inner data, if the enum value is of the expected
-    /// type, otherwise panics.
-    pub fn unwrap_note_as_mut<'log_entry_note>(
-        &'log_entry_note mut self,
-    ) -> &'log_entry_note mut String {
-        match self {
-            LogEntry::Note(f0) => f0,
-            _ => panic!("Failed unwrapping to LogEntry::Note. Unexpected variant"),
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// returns the given default value.
-    pub fn unwrap_note_or(self, default: String) -> String {
-        match self {
-            LogEntry::Note(f0) => f0,
-            _ => default,
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// returns the value that the given closure evaluated to.
-    pub fn unwrap_note_or_else(self, f: impl FnOnce(Self) -> String) -> String {
-        match self {
-            LogEntry::Note(f0) => f0,
-            some => f(some),
-        }
-    }
-    
-    /// Returns `true`, if the enum value is of the expected type, otherwise returns
-    /// `false`.
-    pub fn is_warning(&self) -> bool {
-        match self {
-            LogEntry::Warning(f0, f1) => true,
-            _ => false,
-        }
-    }
-    
-    /// Returns `true`, if the enum value is of the expected type and the given closure
-    /// evalutates to `true`, otherwise returns `false`.
-    pub fn is_warning_and<'log_entry_warning>(
-        &'log_entry_warning self,
-        f: impl FnOnce((&'log_entry_warning String, &'log_entry_warning C)) -> bool,
-    ) -> bool {
-        match self {
-            LogEntry::Warning(f0, f1) => f((f0, f1)),
-            _ => false,
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// panics.
-    pub fn unwrap_warning(self) -> (String, C) {
-        match self {
-            LogEntry::Warning(f0, f1) => (f0, f1),
-            _ => panic!("Failed unwrapping to LogEntry::Warning. Unexpected variant"),
-        }
-    }
-    
-    /// Returns a reference to the inner data, if the enum value is of the expected type,
-    /// otherwise panics.
-    pub fn unwrap_warning_as_ref<'log_entry_warning>(
-        &'log_entry_warning self,
-    ) -> (&'log_entry_warning String, &'log_entry_warning C) {
-        match self {
-            LogEntry::Warning(f0, f1) => (f0, f1),
-            _ => panic!("Failed unwrapping to LogEntry::Warning. Unexpected variant"),
-        }
-    }
-    
-    /// Returns a mutable reference to the inner data, if the enum value is of the expected
-    /// type, otherwise panics.
-    pub fn unwrap_warning_as_mut<'log_entry_warning>(
-        &'log_entry_warning mut self,
-    ) -> (&'log_entry_warning mut String, &'log_entry_warning mut C) {
-        match self {
-            LogEntry::Warning(f0, f1) => (f0, f1),
-            _ => panic!("Failed unwrapping to LogEntry::Warning. Unexpected variant"),
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// returns the given default value.
-    pub fn unwrap_warning_or(self, default: (String, C)) -> (String, C) {
-        match self {
-            LogEntry::Warning(f0, f1) => (f0, f1),
-            _ => default,
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// returns the value that the given closure evaluated to.
-    pub fn unwrap_warning_or_else(self, f: impl FnOnce(Self) -> (String, C)) -> (String, C) {
-        match self {
-            LogEntry::Warning(f0, f1) => (f0, f1),
-            some => f(some),
-        }
-    }
-    
-    /// Returns `true`, if the enum value is of the expected type, otherwise returns
-    /// `false`.
-    pub fn is_error(&self) -> bool {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => true,
-            _ => false,
-        }
-    }
-    
-    /// Returns `true`, if the enum value is of the expected type and the given closure
-    /// evalutates to `true`, otherwise returns `false`.
-    pub fn is_error_and<'log_entry_error>(
-        &'log_entry_error self,
-        f: impl FnOnce(LogEntryErrorRef<'log_entry_error, C>) -> bool,
-    ) -> bool {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => f(LogEntryErrorRef {
-                message,
-                context,
-                code,
-            }),
-            _ => false,
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// panics.
-    pub fn unwrap_error(self) -> LogEntryError<C> {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => LogEntryError {
-                message,
-                context,
-                code,
-            },
-            _ => panic!("Failed unwrapping to LogEntry::Error. Unexpected variant"),
-        }
-    }
-    
-    /// Returns a reference to the inner data, if the enum value is of the expected type,
-    /// otherwise panics.
-    pub fn unwrap_error_as_ref<'log_entry_error>(
-        &'log_entry_error self,
-    ) -> LogEntryErrorRef<'log_entry_error, C> {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => LogEntryErrorRef {
-                message,
-                context,
-                code,
-            },
-            _ => panic!("Failed unwrapping to LogEntry::Error. Unexpected variant"),
-        }
-    }
-    
-    /// Returns a mutable reference to the inner data, if the enum value is of the expected
-    /// type, otherwise panics.
-    pub fn unwrap_error_as_mut<'log_entry_error>(
-        &'log_entry_error mut self,
-    ) -> LogEntryErrorMut<'log_entry_error, C> {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => LogEntryErrorMut {
-                message,
-                context,
-                code,
-            },
-            _ => panic!("Failed unwrapping to LogEntry::Error. Unexpected variant"),
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// returns the given default value.
-    pub fn unwrap_error_or(self, default: LogEntryError<C>) -> LogEntryError<C> {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => LogEntryError {
-                message,
-                context,
-                code,
-            },
-            _ => default,
-        }
-    }
-    
-    /// Returns the inner data, if the enum value is of the expected type, otherwise
-    /// returns the value that the given closure evaluated to.
-    pub fn unwrap_error_or_else(
-        self,
-        f: impl FnOnce(Self) -> LogEntryError<C>,
-    ) -> LogEntryError<C> {
-        match self {
-            LogEntry::Error {
-                message,
-                context,
-                code,
-            } => LogEntryError {
-                message,
-                context,
-                code,
-            },
-            some => f(some),
-        }
-    }
-}
-```
-</details>
-
-Even though this code is already more concise, there is still a rough edge. When collecting all the errors, they still are returned as `Vec<LogEntry>` with no guarantee by the type system that this collection would actually contain only errors. We can solve this problem by extracting the associated data of the `LogEntry::Error` variant into a separate struct.
+Currently, however, there are multiple (depending on the generated methods, up to four) parts in the code where the same data is defined: in the enum variant `LogEntry::Error { .. }`, and in the just mentioned, automatically generated struct `LogEntryError<C>`. It might be more desireable to extract the enum variant into this struct and let the variant just point to it, like so: `LogEntry::Error(LogEntryError<C>)`. This would especially come in handy when working with methods that need references to the variant's associated data, since up until now, special `LogEntryErrorRef<C>` and `LogEntryErrorMut<C>` structs need to be generated for that. With the data extracted, it would be possible to just use `&LogEntryError<C>` and `&mut LogEntryError<C>`.
 
 ## Using `extract`
 
-Here, the `extract` macro comes into play, which does this automatically for us. We tell the macro to do the extraction for every variant with more than one unnamed field (keyword `Unnamed`) or with named fields (keyword `Named`). This will automatically change our two affected variants into `LogEntry::Warning(LogEntryWarning<C>)` and `LogEntry::Error(LogEntryError<C>)`. We can then use the newly generated type `LogEntryError<C>` to guarantee that actually only errors are returned by `get_errors()`. Note, how the construction of the log entries changes, even though the enum code was not changed by hand.
+Here, the `extract` macro comes into play, which does this automatically for us. We tell the macro to do the extraction for every variant with more than one unnamed field (keyword `Unnamed`) or with named fields (keyword `Named`). This will automatically change our two affected variants into `LogEntry::Warning(LogEntryWarning<C>)` and `LogEntry::Error(LogEntryError<C>)`. We can then use the generated type `LogEntryError<C>` to guarantee that actually only errors are returned by `get_errors()`. Note, how the construction of the log entries changes, even though the enum code was not changed by hand. `extract` also automatically implements the `From` trait to convert instances of the extracted types into the corresponding enum variants.
 
-Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `extract_derive(Clone)` attribute.
+Additionally, we make use of the method `<variant>_as_ref()` (keyword `VarAsRef`) to make collecting all error entries and unwrapping them more concise. To make the cloning of the automatically generated `LogEntryError<C>` struct work, we add the `inner(derive(Clone))` attribute.
 
-> ⚠️ When combining both macros, `enpow` must be placed _after_ `extract` to work correctly. Also, the normal `derive` must be placed _after_ `extract`;
+> ⚠️ Macro Order: When combining both macros, `enpow` must be placed _after_ `extract` to work correctly. If the helper attribute `inner` is placed between `extract` and `enpow`, it will only be effective for `extract`. If it is placed after both `extract` and `enpow`, it will be effective for both macros. Also, the normal `derive` macro must be placed _after_ `extract` to work correctly.
 
 ```rust
 use enpow::{enpow, extract}; // ℹ️
 
 /// A log entry
 #[extract(Unnamed, Named)] // ℹ️
-#[extract_derive(Clone)]   //
 #[enpow(VarAsRef)]         //
+#[inner(derive(Clone))]    //
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
     // ✂ unchanged
@@ -585,16 +253,16 @@ type Line = usize;
 // Create a sample log
 let log = Log { entries: vec![
     LogEntry::Note("All fine 😊".into()),
-    LogEntry::Warning(LogEntryWarning( // ℹ️
+    LogEntry::from(LogEntryWarning( // ℹ️
         "There might be an issue here 🤔".into(),
         4,
     )),
-    LogEntry::Error(LogEntryError { // ℹ️
+    LogEntry::from(LogEntryError { // ℹ️
         message: "There _was_ an issue 😖".into(),
         context: 4,
         code: -1,
     }),
-    LogEntry::Error(LogEntryError { // ℹ️
+    LogEntry::from(LogEntryError { // ℹ️
         message: "Follow up".into(),
         context: 12,
         code: -7,
@@ -613,118 +281,97 @@ if !errors.is_empty() {
 }
 ```
 
-<details>
-<summary>ℹ️ Click to reveal generated code</summary>
+At last, we get rid of the long names of the generated structs by giving defining another pattern naming pattern. For this, the same `inner()` helper attribute with the argument `type_name` or `type_names` is used. Besides, with `inner()` it is also possible to change how the variant's name appears in its methods `method_name="..."`, and it is possible to add auto derives to a single variant.
 
 ```rust
+use enpow::{enpow, extract};
+
+/// A log entry
+#[extract(Unnamed, Named)]
+#[enpow(VarAsRef)]
+#[inner(type_names=Var, derive(Clone))] // ℹ️
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
-    /// A simple note without context
-    Note(
-        /// Note's message
-        String,
-    ),
-    /// A warning with a given context
-    Warning(LogEntryWarning<C>),
-    /// An error message with error code and context
-    Error(LogEntryError<C>),
+    // ✂ unchanged
+#   /// A simple note without context
+#   Note(
+#       /// Note's message
+#       String
+#   ),
+#   /// A warning with a given context
+#   Warning(
+#       /// Warning's message
+#       String,
+#       /// Context of the warning
+#       C
+#   ),
+#   /// An error message with error code and context
+#   Error {
+#       /// Error message
+#       message: String,
+#       /// Context of the error
+#       context: C,
+#       /// Error code
+#       code: i16,
+#   },
 }
 
-#[automatically_derived]
-#[allow(unused)]
-impl<C: ToString + Clone> LogEntry<C> {
-    /// Returns a reference to the inner data, if the enum value is of the expected type,
-    /// otherwise returns `None`.
-    pub fn note_as_ref<'log_entry_note>(&'log_entry_note self) -> Option<&'log_entry_note String> {
-        match self {
-            LogEntry::Note(f0) => Some(f0),
-            _ => None,
-        }
-    }
-    
-    /// Returns a mutable reference to the inner data, if the enum value is of the expected
-    /// type, otherwise returns `None`.
-    pub fn note_as_mut<'log_entry_note>(
-        &'log_entry_note mut self,
-    ) -> Option<&'log_entry_note mut String> {
-        match self {
-            LogEntry::Note(f0) => Some(f0),
-            _ => None,
-        }
-    }
-    
-    /// Returns a reference to the inner data, if the enum value is of the expected type,
-    /// otherwise returns `None`.
-    pub fn warning_as_ref<'log_entry_warning>(
-        &'log_entry_warning self,
-    ) -> Option<&'log_entry_warning LogEntryWarning<C>> {
-        match self {
-            LogEntry::Warning(f0) => Some(f0),
-            _ => None,
-        }
-    }
-    
-    /// Returns a mutable reference to the inner data, if the enum value is of the expected
-    /// type, otherwise returns `None`.
-    pub fn warning_as_mut<'log_entry_warning>(
-        &'log_entry_warning mut self,
-    ) -> Option<&'log_entry_warning mut LogEntryWarning<C>> {
-        match self {
-            LogEntry::Warning(f0) => Some(f0),
-            _ => None,
-        }
-    }
-    
-    /// Returns a reference to the inner data, if the enum value is of the expected type,
-    /// otherwise returns `None`.
-    pub fn error_as_ref<'log_entry_error>(
-        &'log_entry_error self,
-    ) -> Option<&'log_entry_error LogEntryError<C>> {
-        match self {
-            LogEntry::Error(f0) => Some(f0),
-            _ => None,
-        }
-    }
-    
-    /// Returns a mutable reference to the inner data, if the enum value is of the expected
-    /// type, otherwise returns `None`.
-    pub fn error_as_mut<'log_entry_error>(
-        &'log_entry_error mut self,
-    ) -> Option<&'log_entry_error mut LogEntryError<C>> {
-        match self {
-            LogEntry::Error(f0) => Some(f0),
-            _ => None,
-        }
+/// Application log for a certain context type
+pub struct Log<C: ToString + Clone> {
+    /// Log entries
+    entries: Vec<LogEntry<C>>,
+}
+
+impl<C: ToString + Clone> Log<C> {
+    /// Collects all entries of type `LogEntry::Error` from the log
+    pub fn get_errors(&self) -> Vec<Error<C>> { // ℹ️
+        self.entries.iter()
+            .filter_map(|entry| entry.error_as_ref())
+            .cloned()
+            .collect()
     }
 }
 
-#[derive(Clone)]
-/// A warning with a given context
-pub struct LogEntryWarning<C: ToString + Clone>(
-    /// Warning's message
-    pub String,
-    /// Context of the warning
-    pub C,
-);
+/// Line number in source
+type Line = usize;
 
-#[derive(Clone)]
-/// An error message with error code and context
-pub struct LogEntryError<C: ToString + Clone> {
-    /// Error message
-    pub message: String,
-    /// Context of the error
-    pub context: C,
-    /// Error code
-    pub code: i16,
+// Create a sample log
+let log = Log { entries: vec![
+    LogEntry::Note("All fine 😊".into()),
+    LogEntry::from(Warning( // ℹ️
+        "There might be an issue here 🤔".into(),
+        4,
+    )),
+    LogEntry::from(Error { // ℹ️
+        message: "There _was_ an issue 😖".into(),
+        context: 4,
+        code: -1,
+    }),
+    LogEntry::from(Error { // ℹ️
+        message: "Follow up".into(),
+        context: 12,
+        code: -7,
+    }),
+] };
+
+// Get and print all errors
+let errors = log.get_errors();
+if !errors.is_empty() {
+    eprintln!("Failed for the following reasons:");
+
+    for error in errors {
+        eprintln!("Error {} at {}: {}", error.code, error.context, error.message);
+    }
 }
 ```
-</details>
 
 This was just a quick introductory example for understanding the use and usage of this crate. See the macros' documentation for more details.
 
-# Inspiration
+# Inspiration and Alternatives
 
 While the first plan for this crate was limited to simple `unwrap` methods and alike, the crate [`variantly`](https://crates.io/crates/variantly) was a great inspiration to take this idea way further. It can be seen as an alternative to this crate with partially different feature set.
+
+Another alternative with partially different feature set is [`enum_variant_type`](https://crates.io/crates/enum_variant_type). Its main focus is generating separate types for every enum variant.
 
 <br/>
 

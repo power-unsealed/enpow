@@ -1,11 +1,11 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
     visit::Visit, Attribute, Data, DataEnum, DeriveInput, Error, Fields, GenericParam, Generics,
     Ident, ItemStruct, Lifetime, LifetimeDef, Path, Token, Type, TypeParam, TypePath, TypeTuple,
-    Variant, Visibility, WherePredicate,
+    Variant, Visibility, WherePredicate, LitStr,
 };
 
 macro_rules! cache_access {
@@ -18,25 +18,188 @@ macro_rules! cache_access {
     }};
 }
 
-pub struct DeriveAttributeInfo {
+/// Unified configuration attribute
+pub struct InnerAttributeInfo {
+    pub span: Span,
     pub derives: Vec<Path>,
+    pub type_name: Option<TypeNaming>,
+    pub method_name: Option<Ident>,
 }
 
-impl Parse for DeriveAttributeInfo {
-    fn parse(input: ParseStream) -> Result<Self, Error> {
-        if input.is_empty() {
-            Ok(DeriveAttributeInfo {
-                derives: Vec::new(),
-            })
+impl InnerAttributeInfo {
+    fn save_into_or_redundant_err<T: Spanned>(
+        new: T,
+        option: &mut Option<T>,
+        what: &str,
+    ) -> Result<(), Error> {
+        if let Some(old) = option {
+            Error::new(old.span(), &format!("First {what} defined here")).to_compile_error();
+            Err(Error::new(
+                new.span(),
+                &format!("Redundant {what} detected")
+            ))
         } else {
-            // Parse the derive arguments in parenthesis
-            let content;
-            parenthesized!(content in input);
-            let derives: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
+            *option = Some(new);
+            Ok(())
+        }
+    }
+}
 
-            Ok(DeriveAttributeInfo {
-                derives: derives.into_iter().collect(),
-            })
+trait InnerAttributeCheck {
+    fn is_inner_config(&self) -> bool;
+}
+
+impl InnerAttributeCheck for Attribute {
+    fn is_inner_config(&self) -> bool {
+        self.path.get_ident()
+            .map_or(false, |ident| &ident.to_string() == "inner")
+    }
+}
+
+impl Parse for InnerAttributeInfo {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        // Parse the arguments to the attribute
+        let content;
+        parenthesized!(content in input);
+        let span = content.span();
+        let args: Punctuated<_, Token![,]> = content.parse_terminated(InnerArgument::parse)?;
+
+        // Extract the information from the arguments
+        let mut derives = Vec::new();
+        let mut type_name = None;
+        let mut method_name = None;
+        for arg in args {
+            match arg {
+                InnerArgument::Derive(paths) => {
+                    derives.extend(paths);
+                }
+                InnerArgument::TypeName(ident) => {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        ident,
+                        &mut type_name,
+                        "type name"
+                    )?;
+                }
+                InnerArgument::MethodName(ident) => {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        ident,
+                        &mut method_name,
+                        "method name"
+                    )?;
+                }
+            }
+        }
+
+        Ok(InnerAttributeInfo {
+            span,
+            derives,
+            type_name,
+            method_name,
+        })
+    }
+}
+
+#[derive(Clone)]
+pub enum TypeNaming {
+    Variant(Span),
+    EnumVariant(Span),
+    VariantEnum(Span),
+    Custom(String, Span),
+}
+
+impl TypeNaming {
+    pub fn format(&self, enum_id: &Ident, var_id: &Ident) -> Ident {
+        match self {
+            TypeNaming::Variant(_) => Ident::new(&var_id.to_string(), Span::call_site()),
+            TypeNaming::EnumVariant(_) => format_ident!("{enum_id}{var_id}"),
+            TypeNaming::VariantEnum(_) => format_ident!("{var_id}{enum_id}"),
+            TypeNaming::Custom(format, _) => {
+                // Replace all {enum} and {var}
+                let output = format.replace("{enum}", &enum_id.to_string());
+                let output = output.replace("{var}", &var_id.to_string());
+
+                Ident::new(&output.to_string(), Span::call_site())
+            }
+        }
+    }
+}
+
+impl Spanned for TypeNaming {
+    fn span(&self) -> Span {
+        match self {
+            TypeNaming::Variant(span) => span.clone(),
+            TypeNaming::EnumVariant(span) => span.clone(),
+            TypeNaming::VariantEnum(span) => span.clone(),
+            TypeNaming::Custom(_, span) => span.clone(),
+        }
+    }
+}
+
+impl Parse for TypeNaming {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        if input.peek(LitStr) {
+            let format: LitStr = input.parse()?;
+
+            // Check whether it is generating valid idents
+            let output = format.value().replace("{enum}", "A");
+            let output = output.replace("{var}", "B");
+            let tokens = match TokenStream::from_str(&output) {
+                Ok(tokens) => tokens,
+                Err(_) => {
+                    return Err(Error::new(
+                        format.span(),
+                        "Does not format into valid identifiers"
+                    ));
+                }
+            };
+            if let Err(_) = syn::parse2::<Ident>(tokens) {
+                return Err(Error::new(
+                    format.span(),
+                    "Does not format into valid identifiers"
+                ));
+            }
+
+            Ok(TypeNaming::Custom(format.value(), format.span()))
+        } else {
+            let ident: Ident = input.parse()?;
+            match ident.to_string().as_str() {
+                "Var" => Ok(TypeNaming::Variant(ident.span())),
+                "EnumVar" => Ok(TypeNaming::EnumVariant(ident.span())),
+                "VarEnum" => Ok(TypeNaming::VariantEnum(ident.span())),
+                _ => Err(Error::new(ident.span(), "Unexpected type naming scheme")),
+            }
+        }
+    }
+}
+
+enum InnerArgument {
+    Derive(Vec<Path>),
+    TypeName(TypeNaming),
+    MethodName(Ident),
+}
+
+impl Parse for InnerArgument {
+    fn parse(input: ParseStream) -> Result<Self, Error> {
+        let ident: Ident = input.parse()?;
+        match ident.to_string().as_str() {
+            "derive" => {
+                let content;
+                parenthesized!(content in input);
+                let args: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
+                let paths = args.into_iter().collect();
+                Ok(InnerArgument::Derive(paths))
+            }
+            "type_name" | "type_names" => {
+                input.parse::<Token![=]>()?;
+                let naming: TypeNaming = input.parse()?;
+                Ok(InnerArgument::TypeName(naming))
+            }
+            "method_name" => {
+                input.parse::<Token![=]>()?;
+                let ident: LitStr = input.parse()?;
+                Ok(InnerArgument::MethodName(ident.parse()?))
+            }
+            _ => Err(Error::new(ident.span(), "Unexpected argument")),
         }
     }
 }
@@ -44,10 +207,18 @@ impl Parse for DeriveAttributeInfo {
 pub struct EnumInfo {
     pub span: Span,
     pub attributes: Vec<Attribute>,
+    /// The parsed `inner` attributes with their index in the attribute collection
+    pub inners: Vec<(usize, InnerAttributeInfo)>,
+    /// All `inner(derive())` directly applied to the enum itself
+    pub derives: Vec<Path>,
+    pub type_naming: TypeNaming,
     pub generics: Generics,
     pub identifier: Ident,
     pub visibility: Visibility,
     pub data: DataEnum,
+    /// Whether there are other calls to `enpow` or `extract`, starting from the attribute at the
+    /// given index
+    pub other_calls_from: Option<usize>,
 }
 
 pub trait EnumInfoAdapter {
@@ -58,6 +229,7 @@ impl EnumInfoAdapter for DeriveInput {
     fn extract_info(self) -> Result<EnumInfo, Error> {
         let span = self.span();
 
+        // Extract the enum data
         let data = match self.data {
             Data::Enum(data) => data,
             _ => {
@@ -68,13 +240,71 @@ impl EnumInfoAdapter for DeriveInput {
             }
         };
 
+        // Parse all `inner` config attributes
+        let mut inners = Vec::new();
+        let mut derives = Vec::new();
+        let mut type_naming = None;
+        for (i, attr) in self.attrs.iter().enumerate() {
+            if attr.is_inner_config() {
+                let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
+
+                if inner.method_name.is_some() {
+                    return Err(Error::new(
+                        inner.span,
+                        "Method renaming only supported on variants, not on the enum itself."
+                    ));
+                }
+
+                if let Some(new) = &inner.type_name {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        new.clone(),
+                        &mut type_naming,
+                        "type name"
+                    )?;
+                }
+
+                derives.extend(inner.derives.iter().cloned());
+                inners.push((i, inner));
+            }
+        }
+
+        // If there is no type name set, default to `EnumVar`
+        let type_naming = type_naming
+            .unwrap_or(TypeNaming::EnumVariant(Span::call_site()));
+
+        // If there is a custom type name, make sure that it contains at least a {var} to make each
+        // variant distinctly named
+        if let TypeNaming::Custom(format, _) = &type_naming {
+            if !format.contains("{var}") {
+                return Err(Error::new(
+                    type_naming.span(),
+                    "Expected type name to contain at least `{var}` to give each variants \
+                    type a different name"
+                ));
+            }
+        }
+
+        // Check for additional calls to `enpow` or `extract`
+        let mut other_calls_from = None;
+        for (i, attr) in self.attrs.iter().enumerate() {
+            let last = attr.path.segments.last().map(|s| s.to_token_stream().to_string());
+            if last.map_or(false, |str| str == "enpow" || str == "extract") {
+                other_calls_from = Some(i);
+                break;
+            }
+        }
+
         Ok(EnumInfo {
             span,
-            generics: self.generics,
             attributes: self.attrs,
+            generics: self.generics,
+            derives,
+            type_naming,
+            inners,
             identifier: self.ident,
             visibility: self.vis,
             data,
+            other_calls_from,
         })
     }
 }
@@ -111,12 +341,15 @@ pub enum VariantType {
 
 pub struct VariantInfo {
     pub docs: Vec<Attribute>,
+    pub inners: Vec<(usize, InnerAttributeInfo)>,
+    /// All `inner(derive())` applied to the enum or to this variant
+    pub derives: Vec<Path>,
     pub visibility: Visibility,
     pub var_type: VariantType,
     /// Variant identifier
     pub identifier: Ident,
     /// Variant identifier in snake case
-    pub snake_case: String,
+    pub method_name: String,
     /// `Enum::Variant`
     pub full_path: Path,
     pub generics: Generics,
@@ -134,7 +367,7 @@ impl VariantInfo {
     pub fn new(
         var_type: VariantType,
         identifier: Ident,
-        docs: Vec<Attribute>,
+        attributes: Vec<Attribute>,
         parent: &EnumInfo,
     ) -> Result<VariantInfo, Error> {
         let enum_ident = &parent.identifier;
@@ -142,11 +375,55 @@ impl VariantInfo {
         // Build path
         let full_path: Path = syn::parse2(quote! { #enum_ident :: #identifier })?;
 
-        // Build type idents
-        let self_ident = format_ident!("{enum_ident}{identifier}");
-        let ref_ident = format_ident!("{enum_ident}{identifier}Ref");
-        let mut_ident = format_ident!("{enum_ident}{identifier}Mut");
+        // Parse all `inner` config attributes
+        let mut inners = Vec::new();
+        let mut type_name = None;
+        let mut method_name = None;
+        let mut derives = parent.derives.clone();
+        for (i, attr) in attributes.iter().enumerate() {
+            if attr.is_inner_config() {
+                let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
+                
+                if let Some(new) = &inner.type_name {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        new.clone(),
+                        &mut type_name,
+                        "type name"
+                    )?;
+                }
+                
+                if let Some(new) = &inner.method_name {
+                    InnerAttributeInfo::save_into_or_redundant_err(
+                        new.clone(),
+                        &mut method_name,
+                        "method name"
+                    )?; 
+                }
+
+                derives.extend(inner.derives.iter().cloned());
+                inners.push((i, inner));
+            }
+        }
+
+
+
+        // Buid the identifiers depending on the given variant name and possible renames
+        let method_name = match method_name {
+            Some(method_name) => method_name.to_string(),
+            None => identifier.to_string().to_snake_case(),
+        };
+        let self_ident = match type_name {
+            Some(type_name) => type_name.format(enum_ident, &identifier),
+            None => parent.type_naming.format(enum_ident, &identifier),
+        };
+        let ref_ident = format_ident!("{self_ident}Ref");
+        let mut_ident = format_ident!("{self_ident}Mut");
         let type_idents = SelfRefMut::new(self_ident, ref_ident, mut_ident);
+
+        // Extract doc comments
+        let docs = attributes.extract_docs();
+
+        // Build type idents
 
         // Build a dummy type tuple with all types contained in the fields.
         // Then parse it and find out which generics were actually used in it.
@@ -172,7 +449,11 @@ impl VariantInfo {
 
         // Add a lifetime to the generics
         let mut ref_generics = generics.clone();
-        let lifetime_name = format!("'{}", type_idents.vself.to_string().to_snake_case());
+        let lifetime_name = format!(
+            "'__{}_{}",
+            enum_ident.to_string().to_snake_case(),
+            identifier.to_string().to_snake_case(),
+        );
         let ref_lifetime = Lifetime::new(&lifetime_name, Span::call_site());
         ref_generics
             .params
@@ -182,9 +463,11 @@ impl VariantInfo {
 
         Ok(VariantInfo {
             docs,
+            inners,
+            derives,
             visibility: parent.visibility.clone(),
             var_type,
-            snake_case: identifier.to_string().to_snake_case(),
+            method_name,
             full_path,
             identifier,
             generics,
@@ -441,6 +724,56 @@ impl VariantInfo {
         .clone()
     }
 
+    /// Builds an implementation of the From trait for this variant. It is expected, that the
+    /// variant will be of the form `Enum::Variant(ExtractedSelfType)` in the final code! That
+    /// means, this only works for extracted variants.
+    pub fn build_from_impl_after_extraction(&mut self, parent: &EnumInfo) -> TokenStream {
+        let data_type = self.build_extracted_self_type();
+        let path = &self.full_path;
+        let enum_ident = &parent.identifier;
+        let (gen_main, gen_short, gen_where) = parent.generics.split_for_impl();
+
+        quote! {
+            impl #gen_main From<#data_type> for #enum_ident #gen_short #gen_where {
+                fn from(inner: #data_type) -> Self {
+                    #path(inner)
+                }
+            }
+        }
+    }
+
+    pub fn build_from_impl_without_extraction(&mut self, parent: &EnumInfo) -> TokenStream {
+        let data_type = self.build_self_type();
+        let path = &self.full_path;
+        let enum_ident = &parent.identifier;
+        let (gen_main, gen_short, gen_where) = parent.generics.split_for_impl();
+
+        let builder = match &self.var_type {
+            VariantType::Unit => quote! {
+                #path
+            },
+            VariantType::Single(_) => quote! {
+                #path ( inner )
+            },
+            _ => {
+                let destruction = self.build_construction(&self.type_idents.vself);
+                let construction = self.build_match_pattern();
+                quote! {
+                    let #destruction = inner;
+                    #construction
+                }
+            }
+        };
+
+        quote! {
+            impl #gen_main From<#data_type> for #enum_ident #gen_short #gen_where {
+                fn from(inner: #data_type) -> Self {
+                    #builder
+                }
+            }
+        }
+    }
+
     /////////////
     // Methods //
     /////////////
@@ -449,10 +782,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = Ident::new(&snake_case, Span::call_site());
+        let fn_ident = Ident::new(&method_name, Span::call_site());
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -471,10 +804,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("{snake_case}_as_ref");
+        let fn_ident = format_ident!("{method_name}_as_ref");
 
         quote! {
             /// Returns a reference to the inner data, if the enum value is of the expected type,
@@ -493,10 +826,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("{snake_case}_as_mut");
+        let fn_ident = format_ident!("{method_name}_as_mut");
 
         quote! {
             /// Returns a mutable reference to the inner data, if the enum value is of the expected
@@ -512,10 +845,10 @@ impl VariantInfo {
 
     pub fn build_is(&mut self) -> TokenStream {
         let pattern = self.build_match_pattern();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("is_{snake_case}");
+        let fn_ident = format_ident!("is_{method_name}");
 
         quote! {
             /// Returns `true`, if the enum value is of the expected type, otherwise returns
@@ -534,10 +867,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("is_{snake_case}_and");
+        let fn_ident = format_ident!("is_{method_name}_and");
 
         quote! {
             /// Returns `true`, if the enum value is of the expected type and the given closure
@@ -558,10 +891,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}");
+        let fn_ident = format_ident!("unwrap_{method_name}");
         let panic_msg = format!(
             "Failed unwrapping to {}::{}. Unexpected variant",
             parent.identifier, self.identifier,
@@ -584,10 +917,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_as_ref");
+        let fn_ident = format_ident!("unwrap_{method_name}_as_ref");
         let panic_msg = format!(
             "Failed unwrapping to {}::{}. Unexpected variant",
             parent.identifier, self.identifier,
@@ -610,10 +943,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_as_mut");
+        let fn_ident = format_ident!("unwrap_{method_name}_as_mut");
         let panic_msg = format!(
             "Failed unwrapping to {}::{}. Unexpected variant",
             parent.identifier, self.identifier,
@@ -635,10 +968,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_or");
+        let fn_ident = format_ident!("unwrap_{method_name}_or");
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -656,10 +989,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("unwrap_{snake_case}_or_else");
+        let fn_ident = format_ident!("unwrap_{method_name}_or_else");
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -677,10 +1010,10 @@ impl VariantInfo {
         let data_type = self.build_self_type();
         let pattern = self.build_match_pattern();
         let construction = self.build_self_construction();
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("expect_{snake_case}");
+        let fn_ident = format_ident!("expect_{method_name}");
 
         quote! {
             /// Returns the inner data, if the enum is of the expected type, otherwise panics with
@@ -699,10 +1032,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_ref_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("expect_{snake_case}_as_ref");
+        let fn_ident = format_ident!("expect_{method_name}_as_ref");
 
         quote! {
             /// Returns a reference to the inner data, if the enum is of the expected type,
@@ -721,10 +1054,10 @@ impl VariantInfo {
         let pattern = self.build_match_pattern();
         let construction = self.build_mut_construction();
         let lifetime = &self.ref_lifetime;
-        let snake_case = &self.snake_case;
+        let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = format_ident!("expect_{snake_case}_as_mut");
+        let fn_ident = format_ident!("expect_{method_name}_as_mut");
 
         quote! {
             /// Returns a mutable reference to the inner data, if the enum is of the expected type,
@@ -733,6 +1066,57 @@ impl VariantInfo {
                 match self {
                     #pattern => #construction,
                     _ => panic!("{}", msg),
+                }
+            }
+        }
+    }
+
+    pub fn build_map_or(&mut self) -> TokenStream {
+        let data_type = self.build_self_type();
+        let pattern = self.build_match_pattern();
+        let construction = self.build_self_construction();
+        let method_name = &self.method_name;
+        let visibility = &self.visibility;
+
+        let fn_ident = format_ident!("map_{method_name}_or");
+
+        quote! {
+            /// Applies the given operation to the inner data and returns its result, if the enum
+            /// value is of the expected type, otherwise returns the given default value.
+            #visibility fn #fn_ident<__T>(
+                self,
+                default: __T,
+                op: impl FnOnce(#data_type) -> __T
+            ) -> __T {
+                match self {
+                    #pattern => op(#construction),
+                    _ => default,
+                }
+            }
+        }
+    }
+
+    pub fn build_map_or_else(&mut self) -> TokenStream {
+        let data_type = self.build_self_type();
+        let pattern = self.build_match_pattern();
+        let construction = self.build_self_construction();
+        let method_name = &self.method_name;
+        let visibility = &self.visibility;
+
+        let fn_ident = format_ident!("map_{method_name}_or_else");
+
+        quote! {
+            /// Applies the given operation to the inner data and returns its result, if the enum
+            /// value is of the expected type, otherwise returns the value that the given default
+            /// closure evaluates to.
+            #visibility fn #fn_ident<__T>(
+                self,
+                default: impl FnOnce(Self) -> __T,
+                op: impl FnOnce(#data_type) -> __T
+            ) -> __T {
+                match self {
+                    #pattern => op(#construction),
+                    other => default(other),
                 }
             }
         }
@@ -746,11 +1130,11 @@ pub trait VariantInfoAdapter {
 impl VariantInfoAdapter for Variant {
     fn extract_info(self, parent: &EnumInfo) -> Result<VariantInfo, Error> {
         let identifier = self.ident;
-        let docs = self.attrs.extract_docs();
+        let attributes = self.attrs;
 
         match self.fields {
             // Variant without data
-            Fields::Unit => VariantInfo::new(VariantType::Unit, identifier, docs, parent),
+            Fields::Unit => VariantInfo::new(VariantType::Unit, identifier, attributes, parent),
 
             // Variant with one unnamed fields
             Fields::Unnamed(mut tuple) if tuple.unnamed.len() == 1 => {
@@ -759,7 +1143,7 @@ impl VariantInfoAdapter for Variant {
                     docs: single.attrs.extract_docs(),
                     data_type: single.ty,
                 };
-                VariantInfo::new(VariantType::Single(field), identifier, docs, parent)
+                VariantInfo::new(VariantType::Single(field), identifier, attributes, parent)
             }
 
             // Variant with unnamed fields
@@ -772,7 +1156,7 @@ impl VariantInfoAdapter for Variant {
                         data_type: field.ty,
                     })
                     .collect();
-                VariantInfo::new(VariantType::Unnamed(fields), identifier, docs, parent)
+                VariantInfo::new(VariantType::Unnamed(fields), identifier, attributes, parent)
             }
 
             // Variant with named fields
@@ -786,7 +1170,7 @@ impl VariantInfoAdapter for Variant {
                         data_type: field.ty,
                     })
                     .collect();
-                VariantInfo::new(VariantType::Named(fields), identifier, docs, parent)
+                VariantInfo::new(VariantType::Named(fields), identifier, attributes, parent)
             }
         }
     }
