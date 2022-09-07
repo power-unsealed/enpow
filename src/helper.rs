@@ -742,6 +742,38 @@ impl VariantInfo {
         }
     }
 
+    pub fn build_from_impl_without_extraction(&mut self, parent: &EnumInfo) -> TokenStream {
+        let data_type = self.build_self_type();
+        let path = &self.full_path;
+        let enum_ident = &parent.identifier;
+        let (gen_main, gen_short, gen_where) = parent.generics.split_for_impl();
+
+        let builder = match &self.var_type {
+            VariantType::Unit => quote! {
+                #path
+            },
+            VariantType::Single(_) => quote! {
+                #path ( inner )
+            },
+            _ => {
+                let destruction = self.build_construction(&self.type_idents.vself);
+                let construction = self.build_match_pattern();
+                quote! {
+                    let #destruction = inner;
+                    #construction
+                }
+            }
+        };
+
+        quote! {
+            impl #gen_main From<#data_type> for #enum_ident #gen_short #gen_where {
+                fn from(inner: #data_type) -> Self {
+                    #builder
+                }
+            }
+        }
+    }
+
     /////////////
     // Methods //
     /////////////

@@ -4,7 +4,7 @@ use crate::helper::{
     EnumInfo, EnumInfoAdapter, VariantInfo, VariantInfoAdapter, VariantType,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -73,6 +73,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
     let mut self_defs = Vec::new();
     let mut ref_defs = Vec::new();
     let mut mut_defs = Vec::new();
+    let mut from_impls = Vec::new();
     for (i, mut variant) in variants.into_iter().enumerate() {
         // Build all selected method types for that variant
         methods.extend(variant.build_method_types(&parent, &types));
@@ -98,11 +99,15 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         // Build type definitions as needed
         if let VariantType::Named(_) = &variant.var_type {
             if gen_self_def {
+                // For self types we also add an automatic from implementation
                 let self_def = variant.build_self_type_def();
                 self_defs.push(quote! {
                     #[derive( #(#self_derives),* )]
                     #self_def
                 });
+                
+                // Build the from implementations
+                from_impls.push(variant.build_from_impl_without_extraction(&parent));
             }
 
             if gen_ref_def {
@@ -144,10 +149,11 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
     let enum_ident = &parent.identifier;
     let (gen_full, gen_short, gen_where) = parent.generics.split_for_impl();
 
-    // Generate the output tokens, while preserving the span for the original enum, but pointing
-    // all additional tokens to the call site
-    let original_tokens = output.to_token_stream();
-    let additional_tokens = quote_spanned! { Span::call_site() =>
+    Ok(quote! {
+        #output
+
+        #(#from_impls)*
+
         #(#[allow(unused)] #self_defs)*
         #(#[allow(unused)] #ref_defs)*
         #(#[allow(unused)] #mut_defs)*
@@ -157,11 +163,6 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         impl #gen_full #enum_ident #gen_short #gen_where {
             #(#methods)*
         }
-    };
-
-    Ok(quote! {
-        #original_tokens
-        #additional_tokens
     })
 }
 
