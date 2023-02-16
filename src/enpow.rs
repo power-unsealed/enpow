@@ -55,10 +55,10 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         for (j, (j_name, j_span)) in var_names.iter().enumerate() {
             if i != j && i_name == j_name {
                 let i_ident = &variants[i].identifier;
-                Error::new(i_span.clone(), "Conflicting variant defined here")
+                Error::new(*i_span, "Conflicting variant defined here")
                     .into_compile_error();
                 return Err(Error::new(
-                    j_span.clone(),
+                    *j_span,
                     format!(
                         "Identifier clashes with other variant `{i_ident}` when turned into \
                         snake case: `{i_name}`. Consider renaming one of the variants"
@@ -76,7 +76,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
     let mut from_impls = Vec::new();
     for (i, mut variant) in variants.into_iter().enumerate() {
         // Build all selected method types for that variant
-        methods.extend(variant.build_method_types(&parent, &types));
+        methods.extend(variant.build_method_types(&parent, types));
 
         // Get the variant derives
         let self_derives = variant.derives.clone();
@@ -86,13 +86,9 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         // identified -> best efford filter
         let ref_derives: Vec<_> = self_derives
             .iter()
-            .filter_map(|path| {
+            .filter(|path| {
                 let last = path.segments.last().map(|l| l.to_token_stream().to_string());
-                if let Some("Copy") | Some("Clone") = last.as_ref().map(|s| s.as_str()) {
-                    None
-                } else {
-                    Some(path)
-                }
+                !matches!(last.as_deref(), Some("Copy") | Some("Clone"))
             })
             .collect();
 
