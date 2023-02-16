@@ -2,11 +2,11 @@
 
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-informational?style=flat)](COPYRIGHT.md)
 
-EnPow is a procedural macro crate used to en**Pow**er user defined **En**ums with many methods usually known from the standard library's `Result<T, E>` and `Option<T>`. It can generate methods like `fn is_<variant>(&self) -> bool` or `fn unwrap_<variant>(self) -> <inner>`, supporting variants with named or unnamed fields (or none), as well as generics. See the `enpow` macro documentation for details on the specific methods supported.
+EnPow is a procedural macro crate used to en**Pow**er user defined **En**ums with many methods usually known from the standard library's `Result<T, E>` and `Option<T>`. It can generate methods like `fn is_<variant>(&self) -> bool` or `fn unwrap_<variant>(self) -> <inner>`, supporting variants with named or unnamed fields (or none), as well as generics. See the [`enpow` macro documentation](crate::enpow()) for details on the specific methods supported.
 
-Additionally, this crate allows to extract the data associated with each enum variant into separate structs, allowing for more compact code e.g. when designing an Abstract Syntax Tree. See the `extract` macro documentation for more details.
+Additionally, this crate allows to extract the data associated with each enum variant into separate structs, allowing for more compact code e.g. when designing an Abstract Syntax Tree. See the [`extract` macro documentation](crate::extract()) for more details.
 
-It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as further explained in the following use case. Nevertheless, both macros can be used indenpendently from each other.
+It is also possible to combine both macros when keeping them in the right order: first `extract` and then `enpow`. Combining both macros avoids generating separate structs for `Ref` or `Mut` struct variants as further explained in the following use case demonstration. Nevertheless, both macros can be used indenpendently from each other.
 
 # Installation
 
@@ -16,6 +16,80 @@ Add the following to your `Cargo.toml` to include `enpow` as dependency to your 
 ```toml
 [dependencies]
 enpow = "~2.0.1"
+```
+
+# Quick Start
+
+## Enpow
+
+To generate all available methods for an enum, import the `enpow` macro and add `#[enpow(All)]` in front of the enum's definition. It is also possible to selectively generate certain methods. For more information, see the following use case demonstration or the [documentation](crate::enpow()) for the `enpow` macro.
+```rust
+use enpow::enpow;
+
+#[enpow(All)]
+pub enum IpAddress {
+    None,
+    V4(u8, u8, u8, u8),
+    V6(String),
+    Multi {
+        v4: (u8, u8, u8, u8),
+        v6: String,
+    },
+}
+```
+
+_Some_ of the generated methods are:
+- `fn v4(self) -> Option<(u8, u8, u8, u8)>`
+- `fn is_none(&self) -> bool`
+- `fn unwrap_v6(self) -> String`
+- `fn expect_multi(self, msg: &str) -> IpAddressMulti`
+- ...
+
+Besides these methods, also structs are generated as needed, like the following:
+```rust
+pub struct IpAddressMulti {
+    pub v4: (u8, u8, u8, u8),
+    pub v6: String,
+}
+```
+
+## Extract
+
+To extract all variants of an enum into separate types, import the `extract` macro and add `#[extract(All)]` in front of the enum's definition. It is also possible to select certain variants for extraction. For more information see the following use case demonstration or the [documentation](crate::extract()) for the `extract` macro. 
+```rust
+use enpow::extract;
+
+#[extract(All)]
+pub enum IpAddress {
+    None,
+    V4(u8, u8, u8, u8),
+    V6(String),
+    Multi {
+        v4: (u8, u8, u8, u8),
+        v6: String,
+    },
+}
+```
+
+This will generate the following data types:
+```rust
+pub enum IpAddress {
+    None(IpAddressNone),
+    V4(IpAddressV4),
+    V6(IpAddressV6),
+    Multi(IpAddressMulti),
+}
+
+pub struct IpAddressNone;
+
+pub struct IpAddressV4(pub u8, pub u8, pub u8, pub u8);
+
+pub struct IpAddressV6(pub String);
+
+pub struct IpAddressMulti {
+    pub v4: (u8, u8, u8, u8),
+    pub v6: String,
+}
 ```
 
 # Use Case
@@ -116,28 +190,27 @@ use enpow::enpow; // ℹ️
 #[enpow(IsVar, UnwrapVar)] // ℹ️
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
-    // ✂ unchanged
-#   /// A simple note without context
-#   Note(
-#       /// Note's message
-#       String
-#   ),
-#   /// A warning with a given context
-#   Warning(
-#       /// Warning's message
-#       String,
-#       /// Context of the warning
-#       C
-#   ),
-#   /// An error message with error code and context
-#   Error {
-#       /// Error message
-#       message: String,
-#       /// Context of the error
-#       context: C,
-#       /// Error code
-#       code: i16,
-#   },
+    /// A simple note without context
+    Note(
+        /// Note's message
+        String
+    ),
+    /// A warning with a given context
+    Warning(
+        /// Warning's message
+        String,
+        /// Context of the warning
+        C
+    ),
+    /// An error message with error code and context
+    Error {
+        /// Error message
+        message: String,
+        /// Context of the error
+        context: C,
+        /// Error code
+        code: i16,
+    },
 }
 
 /// Application log for a certain context type
@@ -161,19 +234,18 @@ type Line = usize;
 
 // Create a sample log
 let log = Log { entries: vec![
-    // ✂ unchanged
-#   LogEntry::Note("All fine 😊".into()),
-#   LogEntry::Warning("There might be an issue here 🤔".into(), 4),
-#   LogEntry::Error {
-#       message: "There _was_ an issue 😖".into(),
-#       context: 4,
-#       code: -1,
-#   },
-#   LogEntry::Error {
-#       message: "Follow up".into(),
-#       context: 12,
-#       code: -7,
-#   },
+    LogEntry::Note("All fine 😊".into()),
+    LogEntry::Warning("There might be an issue here 🤔".into(), 4),
+    LogEntry::Error {
+        message: "There _was_ an issue 😖".into(),
+        context: 4,
+        code: -1,
+    },
+    LogEntry::Error {
+        message: "Follow up".into(),
+        context: 12,
+        code: -7,
+    },
 ] };
 
 // Get and print all errors
@@ -209,28 +281,27 @@ use enpow::{enpow, extract}; // ℹ️
 #[inner(derive(Clone))]    //
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
-    // ✂ unchanged
-#   /// A simple note without context
-#   Note(
-#       /// Note's message
-#       String
-#   ),
-#   /// A warning with a given context
-#   Warning(
-#       /// Warning's message
-#       String,
-#       /// Context of the warning
-#       C
-#   ),
-#   /// An error message with error code and context
-#   Error {
-#       /// Error message
-#       message: String,
-#       /// Context of the error
-#       context: C,
-#       /// Error code
-#       code: i16,
-#   },
+    /// A simple note without context
+    Note(
+        /// Note's message
+        String
+    ),
+    /// A warning with a given context
+    Warning(
+        /// Warning's message
+        String,
+        /// Context of the warning
+        C
+    ),
+    /// An error message with error code and context
+    Error {
+        /// Error message
+        message: String,
+        /// Context of the error
+        context: C,
+        /// Error code
+        code: i16,
+    },
 }
 
 /// Application log for a certain context type
@@ -294,28 +365,27 @@ use enpow::{enpow, extract};
 #[inner(type_names=Var, derive(Clone))] // ℹ️
 #[derive(Clone)]
 pub enum LogEntry<C: ToString + Clone> {
-    // ✂ unchanged
-#   /// A simple note without context
-#   Note(
-#       /// Note's message
-#       String
-#   ),
-#   /// A warning with a given context
-#   Warning(
-#       /// Warning's message
-#       String,
-#       /// Context of the warning
-#       C
-#   ),
-#   /// An error message with error code and context
-#   Error {
-#       /// Error message
-#       message: String,
-#       /// Context of the error
-#       context: C,
-#       /// Error code
-#       code: i16,
-#   },
+    /// A simple note without context
+    Note(
+        /// Note's message
+        String
+    ),
+    /// A warning with a given context
+    Warning(
+        /// Warning's message
+        String,
+        /// Context of the warning
+        C
+    ),
+    /// An error message with error code and context
+    Error {
+        /// Error message
+        message: String,
+        /// Context of the error
+        context: C,
+        /// Error code
+        code: i16,
+    },
 }
 
 /// Application log for a certain context type
