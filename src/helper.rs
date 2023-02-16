@@ -33,10 +33,10 @@ impl InnerAttributeInfo {
         what: &str,
     ) -> Result<(), Error> {
         if let Some(old) = option {
-            Error::new(old.span(), &format!("First {what} defined here")).to_compile_error();
+            Error::new(old.span(), format!("First {what} defined here")).to_compile_error();
             Err(Error::new(
                 new.span(),
-                &format!("Redundant {what} detected")
+                format!("Redundant {what} detected")
             ))
         } else {
             *option = Some(new);
@@ -118,7 +118,7 @@ impl TypeNaming {
                 let output = format.replace("{enum}", &enum_id.to_string());
                 let output = output.replace("{var}", &var_id.to_string());
 
-                Ident::new(&output.to_string(), Span::call_site())
+                Ident::new(&output, Span::call_site())
             }
         }
     }
@@ -127,10 +127,10 @@ impl TypeNaming {
 impl Spanned for TypeNaming {
     fn span(&self) -> Span {
         match self {
-            TypeNaming::Variant(span) => span.clone(),
-            TypeNaming::EnumVariant(span) => span.clone(),
-            TypeNaming::VariantEnum(span) => span.clone(),
-            TypeNaming::Custom(_, span) => span.clone(),
+            TypeNaming::Variant(span) => *span,
+            TypeNaming::EnumVariant(span) => *span,
+            TypeNaming::VariantEnum(span) => *span,
+            TypeNaming::Custom(_, span) => *span,
         }
     }
 }
@@ -152,7 +152,7 @@ impl Parse for TypeNaming {
                     ));
                 }
             };
-            if let Err(_) = syn::parse2::<Ident>(tokens) {
+            if syn::parse2::<Ident>(tokens).is_err() {
                 return Err(Error::new(
                     format.span(),
                     "Does not format into valid identifiers"
@@ -270,7 +270,7 @@ impl EnumInfoAdapter for DeriveInput {
 
         // If there is no type name set, default to `EnumVar`
         let type_naming = type_naming
-            .unwrap_or(TypeNaming::EnumVariant(Span::call_site()));
+            .unwrap_or_else(|| TypeNaming::EnumVariant(Span::call_site()));
 
         // If there is a custom type name, make sure that it contains at least a {var} to make each
         // variant distinctly named
@@ -551,7 +551,7 @@ impl VariantInfo {
         cache_access!(self.type_defs_cache.vref, {
             let generics = &self.ref_generics;
             let lifetime = &self.ref_lifetime;
-            self.build_type_def(&self.type_idents.vref, &generics, quote! { &#lifetime })
+            self.build_type_def(&self.type_idents.vref, generics, quote! { &#lifetime })
         })
         .clone()
     }
@@ -560,7 +560,7 @@ impl VariantInfo {
         cache_access!(self.type_defs_cache.vmut, {
             let generics = &self.ref_generics;
             let lifetime = &self.ref_lifetime;
-            self.build_type_def(&self.type_idents.vmut, &generics, quote! { &#lifetime mut })
+            self.build_type_def(&self.type_idents.vmut, generics, quote! { &#lifetime mut })
         })
         .clone()
     }
@@ -785,7 +785,7 @@ impl VariantInfo {
         let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = Ident::new(&method_name, Span::call_site());
+        let fn_ident = Ident::new(method_name, Span::call_site());
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
@@ -1184,7 +1184,7 @@ impl DocExtractor for Vec<Attribute> {
     fn extract_docs(self) -> Vec<Attribute> {
         self.into_iter()
             .filter(|attr| match attr.path.get_ident() {
-                Some(ident) => ident.to_string() == "doc",
+                Some(ident) => *ident == "doc",
                 None => false,
             })
             .collect()
@@ -1241,7 +1241,7 @@ impl UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
         };
-        monitor.visit_item_struct(&input);
+        monitor.visit_item_struct(input);
         monitor
     }
 
@@ -1250,7 +1250,7 @@ impl UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
         };
-        monitor.visit_lifetime_def(&input);
+        monitor.visit_lifetime_def(input);
         monitor
     }
 
@@ -1259,7 +1259,7 @@ impl UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
         };
-        monitor.visit_type_param(&input);
+        monitor.visit_type_param(input);
         monitor
     }
 
@@ -1268,7 +1268,7 @@ impl UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
         };
-        monitor.visit_where_predicate(&input);
+        monitor.visit_where_predicate(input);
         monitor
     }
 
@@ -1277,7 +1277,7 @@ impl UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
         };
-        monitor.visit_type_tuple(&input);
+        monitor.visit_type_tuple(input);
         monitor
     }
 }
