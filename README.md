@@ -18,6 +18,11 @@ Add the following to your `Cargo.toml` to include `enpow` as dependency to your 
 enpow = "~2.0.2"
 ```
 
+Alternatively, run following command inside your crate's root directory.
+```bash
+cargo add enpow
+```
+
 # Quick Start
 
 ## Enpow
