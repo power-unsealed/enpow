@@ -785,7 +785,7 @@ impl VariantInfo {
         let method_name = &self.method_name;
         let visibility = &self.visibility;
 
-        let fn_ident = Ident::new(method_name, Span::call_site());
+        let fn_ident = Ident::new_raw(method_name, Span::call_site());
 
         quote! {
             /// Returns the inner data, if the enum value is of the expected type, otherwise
