@@ -116,7 +116,7 @@ mod helper;
 ///     *v4.3 = 2;
 /// }
 /// assert_eq!(ip, IpAddress::V4(192, 168, 0, 2));
-/// 
+///
 /// // fn map_<variant>_or()
 /// assert_eq!(
 ///     IpAddress::V4(192, 168, 0, 1).map_v4_or((0, 0, 0, 0), |mut v4| { v4.3 = 2; v4 }),
@@ -126,7 +126,7 @@ mod helper;
 ///     IpAddress::None.map_v6_or("::".into(), |v6| v6),
 ///     "::".to_owned()
 /// );
-/// 
+///
 /// // fn map_<variant>_or_else()
 /// assert_eq!(
 ///     IpAddress::V6("::".into()).map_v6_or_else(|_| unreachable!(), |v6| v6 + "1"),
@@ -241,7 +241,7 @@ pub fn enpow(
 /// - `All`: Extracts all variants into structs.
 ///
 /// This example will extract all variants.
-/// 
+///
 /// ```rust
 /// # use enpow::extract;
 /// #
@@ -291,7 +291,7 @@ pub fn enpow(
 ///
 /// An additional `derive` macro attached to the enum should come __after__ `extract`
 /// to make sure the automatically derived implementations match the changed enum structure.
-/// 
+///
 #[doc = include_str!("../misc/inner_common.md")]
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[proc_macro_attribute]

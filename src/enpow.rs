@@ -1,14 +1,12 @@
 use std::collections::HashSet;
 
-use crate::helper::{
-    EnumInfo, EnumInfoAdapter, VariantInfo, VariantInfoAdapter, VariantType,
-};
+use crate::helper::{EnumInfo, EnumInfoAdapter, VariantInfo, VariantInfoAdapter, VariantType};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    DeriveInput, Error, Ident, Token, Data,
+    Data, DeriveInput, Error, Ident, Token,
 };
 
 pub fn entry(attribute: TokenStream, item: TokenStream) -> Result<TokenStream, Error> {
@@ -55,8 +53,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         for (j, (j_name, j_span)) in var_names.iter().enumerate() {
             if i != j && i_name == j_name {
                 let i_ident = &variants[i].identifier;
-                Error::new(*i_span, "Conflicting variant defined here")
-                    .into_compile_error();
+                Error::new(*i_span, "Conflicting variant defined here").into_compile_error();
                 return Err(Error::new(
                     *j_span,
                     format!(
@@ -87,7 +84,10 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
         let ref_derives: Vec<_> = self_derives
             .iter()
             .filter(|path| {
-                let last = path.segments.last().map(|l| l.to_token_stream().to_string());
+                let last = path
+                    .segments
+                    .last()
+                    .map(|l| l.to_token_stream().to_string());
                 !matches!(last.as_deref(), Some("Copy") | Some("Clone"))
             })
             .collect();
@@ -101,7 +101,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
                     #[derive( #(#self_derives),* )]
                     #self_def
                 });
-                
+
                 // Build the from implementations
                 from_impls.push(variant.build_from_impl_without_extraction(&parent));
             }
@@ -122,7 +122,7 @@ fn generate(input: TokenStream, types: &[EnpowType]) -> Result<TokenStream, Erro
                 });
             }
         }
-        
+
         // Remove the original inner attributes from the ast if there are no other macro calls
         // that need them
         if parent.other_calls_from.is_none() {

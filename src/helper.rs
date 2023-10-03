@@ -4,8 +4,8 @@ use std::{collections::HashSet, str::FromStr};
 use syn::{
     parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
     visit::Visit, Attribute, Data, DataEnum, DeriveInput, Error, Fields, GenericParam, Generics,
-    Ident, ItemStruct, Lifetime, LifetimeDef, Path, Token, Type, TypeParam, TypePath, TypeTuple,
-    Variant, Visibility, WherePredicate, LitStr,
+    Ident, ItemStruct, Lifetime, LifetimeDef, LitStr, Path, Token, Type, TypeParam, TypePath,
+    TypeTuple, Variant, Visibility, WherePredicate,
 };
 
 macro_rules! cache_access {
@@ -34,10 +34,7 @@ impl InnerAttributeInfo {
     ) -> Result<(), Error> {
         if let Some(old) = option {
             Error::new(old.span(), format!("First {what} defined here")).to_compile_error();
-            Err(Error::new(
-                new.span(),
-                format!("Redundant {what} detected")
-            ))
+            Err(Error::new(new.span(), format!("Redundant {what} detected")))
         } else {
             *option = Some(new);
             Ok(())
@@ -51,7 +48,8 @@ trait InnerAttributeCheck {
 
 impl InnerAttributeCheck for Attribute {
     fn is_inner_config(&self) -> bool {
-        self.path.get_ident()
+        self.path
+            .get_ident()
             .map_or(false, |ident| &ident.to_string() == "inner")
     }
 }
@@ -77,14 +75,14 @@ impl Parse for InnerAttributeInfo {
                     InnerAttributeInfo::save_into_or_redundant_err(
                         ident,
                         &mut type_name,
-                        "type name"
+                        "type name",
                     )?;
                 }
                 InnerArgument::MethodName(ident) => {
                     InnerAttributeInfo::save_into_or_redundant_err(
                         ident,
                         &mut method_name,
-                        "method name"
+                        "method name",
                     )?;
                 }
             }
@@ -148,14 +146,14 @@ impl Parse for TypeNaming {
                 Err(_) => {
                     return Err(Error::new(
                         format.span(),
-                        "Does not format into valid identifiers"
+                        "Does not format into valid identifiers",
                     ));
                 }
             };
             if syn::parse2::<Ident>(tokens).is_err() {
                 return Err(Error::new(
                     format.span(),
-                    "Does not format into valid identifiers"
+                    "Does not format into valid identifiers",
                 ));
             }
 
@@ -251,7 +249,7 @@ impl EnumInfoAdapter for DeriveInput {
                 if inner.method_name.is_some() {
                     return Err(Error::new(
                         inner.span,
-                        "Method renaming only supported on variants, not on the enum itself."
+                        "Method renaming only supported on variants, not on the enum itself.",
                     ));
                 }
 
@@ -259,7 +257,7 @@ impl EnumInfoAdapter for DeriveInput {
                     InnerAttributeInfo::save_into_or_redundant_err(
                         new.clone(),
                         &mut type_naming,
-                        "type name"
+                        "type name",
                     )?;
                 }
 
@@ -269,8 +267,7 @@ impl EnumInfoAdapter for DeriveInput {
         }
 
         // If there is no type name set, default to `EnumVar`
-        let type_naming = type_naming
-            .unwrap_or_else(|| TypeNaming::EnumVariant(Span::call_site()));
+        let type_naming = type_naming.unwrap_or_else(|| TypeNaming::EnumVariant(Span::call_site()));
 
         // If there is a custom type name, make sure that it contains at least a {var} to make each
         // variant distinctly named
@@ -279,7 +276,7 @@ impl EnumInfoAdapter for DeriveInput {
                 return Err(Error::new(
                     type_naming.span(),
                     "Expected type name to contain at least `{var}` to give each variants \
-                    type a different name"
+                    type a different name",
                 ));
             }
         }
@@ -287,7 +284,11 @@ impl EnumInfoAdapter for DeriveInput {
         // Check for additional calls to `enpow` or `extract`
         let mut other_calls_from = None;
         for (i, attr) in self.attrs.iter().enumerate() {
-            let last = attr.path.segments.last().map(|s| s.to_token_stream().to_string());
+            let last = attr
+                .path
+                .segments
+                .last()
+                .map(|s| s.to_token_stream().to_string());
             if last.map_or(false, |str| str == "enpow" || str == "extract") {
                 other_calls_from = Some(i);
                 break;
@@ -383,29 +384,27 @@ impl VariantInfo {
         for (i, attr) in attributes.iter().enumerate() {
             if attr.is_inner_config() {
                 let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
-                
+
                 if let Some(new) = &inner.type_name {
                     InnerAttributeInfo::save_into_or_redundant_err(
                         new.clone(),
                         &mut type_name,
-                        "type name"
+                        "type name",
                     )?;
                 }
-                
+
                 if let Some(new) = &inner.method_name {
                     InnerAttributeInfo::save_into_or_redundant_err(
                         new.clone(),
                         &mut method_name,
-                        "method name"
-                    )?; 
+                        "method name",
+                    )?;
                 }
 
                 derives.extend(inner.derives.iter().cloned());
                 inners.push((i, inner));
             }
         }
-
-
 
         // Buid the identifiers depending on the given variant name and possible renames
         let method_name = match method_name {

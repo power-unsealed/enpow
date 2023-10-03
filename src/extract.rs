@@ -42,9 +42,7 @@ fn generate(input: TokenStream, types: HashSet<ExtractType>) -> Result<TokenStre
             let type_def = variant.build_self_type_def();
 
             // Manipulate the corresponding enum variant to contain only this new type
-            output_data.variants[i].fields = Fields::Unnamed(
-                syn::parse2(quote! { (#data_type) })?
-            );
+            output_data.variants[i].fields = Fields::Unnamed(syn::parse2(quote! { (#data_type) })?);
 
             // Generate the From trait for this extracted variant
             let from_impl = variant.build_from_impl_after_extraction(&parent);

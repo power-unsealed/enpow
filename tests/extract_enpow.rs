@@ -11,13 +11,13 @@ mod outer {
         /// Docs for `A`
         A,
         /// Docs for `B`
-        #[inner(method_name="bee")]
+        #[inner(method_name = "bee")]
         B(
             /// Docs for `B::0`
             T,
         ),
         /// Docs for `C`
-        #[inner(type_name="C", method_name="sea")]
+        #[inner(type_name = "C", method_name = "sea")]
         C(
             /// Docs for `C::0`
             T,
@@ -25,7 +25,7 @@ mod outer {
             S,
         ),
         /// Docs for `D`
-        #[inner(type_name="D")]
+        #[inner(type_name = "D")]
         D {
             /// Docs for `D::a`
             a: T,
@@ -43,5 +43,8 @@ fn test() {
 
     // Check whether inner(derive()) is applied to both macros
     assert_eq!(Inner::from(C(0, 'c')), Inner::C(C(0, 'c')));
-    assert_eq!(Inner::from(D { a: 0, b: 'd' }).unwrap_d(), D { a: 0, b: 'd' });
+    assert_eq!(
+        Inner::from(D { a: 0, b: 'd' }).unwrap_d(),
+        D { a: 0, b: 'd' }
+    );
 }
