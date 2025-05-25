@@ -10,12 +10,12 @@ It is also possible to combine both macros when keeping them in the right order:
 
 # Installation
 
-> ⚠️ The minimum supported Rust toolchain version is Rust 1.58.0
+> ⚠️ The minimum supported Rust toolchain version is Rust 1.61.0
 
 Add the following to your `Cargo.toml` to include `enpow` as dependency to your project.
 ```toml
 [dependencies]
-enpow = "~2.0.2"
+enpow = "2.0"
 ```
 
 Alternatively, run following command inside your crate's root directory.
@@ -463,7 +463,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 #### License
 
-&copy; 2022 Florian Köhler.
+&copy; 2025 Florian Köhler.
 
 This project is licensed at your option under either of
 

@@ -2,10 +2,10 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashSet, str::FromStr};
 use syn::{
-    parenthesized, parse::Parse, parse::ParseStream, punctuated::Punctuated, spanned::Spanned,
-    visit::Visit, Attribute, Data, DataEnum, DeriveInput, Error, Fields, GenericParam, Generics,
-    Ident, ItemStruct, Lifetime, LifetimeDef, LitStr, Path, Token, Type, TypeParam, TypePath,
-    TypeTuple, Variant, Visibility, WherePredicate,
+    parenthesized, parse::Parse, parse::ParseStream, spanned::Spanned, visit::Visit, Attribute,
+    Data, DataEnum, DeriveInput, Error, Fields, GenericParam, Generics, Ident, ItemStruct,
+    Lifetime, LifetimeParam, LitStr, Path, Token, Type, TypeParam, TypePath, TypeTuple, Variant,
+    Visibility, WherePredicate,
 };
 
 macro_rules! cache_access {
@@ -27,14 +27,17 @@ pub struct InnerAttributeInfo {
 }
 
 impl InnerAttributeInfo {
-    fn save_into_or_redundant_err<T: Spanned>(
+    fn save_into_or_redundant_err<T: CustomSpanned>(
         new: T,
         option: &mut Option<T>,
         what: &str,
     ) -> Result<(), Error> {
         if let Some(old) = option {
-            Error::new(old.span(), format!("First {what} defined here")).to_compile_error();
-            Err(Error::new(new.span(), format!("Redundant {what} detected")))
+            Error::new(old.custom_span(), format!("First {what} defined here")).to_compile_error();
+            Err(Error::new(
+                new.custom_span(),
+                format!("Redundant {what} detected"),
+            ))
         } else {
             *option = Some(new);
             Ok(())
@@ -48,7 +51,7 @@ trait InnerAttributeCheck {
 
 impl InnerAttributeCheck for Attribute {
     fn is_inner_config(&self) -> bool {
-        self.path
+        self.path()
             .get_ident()
             .map_or(false, |ident| &ident.to_string() == "inner")
     }
@@ -57,10 +60,8 @@ impl InnerAttributeCheck for Attribute {
 impl Parse for InnerAttributeInfo {
     fn parse(input: ParseStream) -> Result<Self, Error> {
         // Parse the arguments to the attribute
-        let content;
-        parenthesized!(content in input);
-        let span = content.span();
-        let args: Punctuated<_, Token![,]> = content.parse_terminated(InnerArgument::parse)?;
+        let span = input.span();
+        let args = input.parse_terminated(InnerArgument::parse, Token![,])?;
 
         // Extract the information from the arguments
         let mut derives = Vec::new();
@@ -97,6 +98,16 @@ impl Parse for InnerAttributeInfo {
     }
 }
 
+pub trait CustomSpanned {
+    fn custom_span(&self) -> Span;
+}
+
+impl<T: Spanned> CustomSpanned for T {
+    fn custom_span(&self) -> Span {
+        self.span()
+    }
+}
+
 #[derive(Clone)]
 pub enum TypeNaming {
     Variant(Span),
@@ -122,8 +133,8 @@ impl TypeNaming {
     }
 }
 
-impl Spanned for TypeNaming {
-    fn span(&self) -> Span {
+impl CustomSpanned for TypeNaming {
+    fn custom_span(&self) -> Span {
         match self {
             TypeNaming::Variant(span) => *span,
             TypeNaming::EnumVariant(span) => *span,
@@ -183,7 +194,7 @@ impl Parse for InnerArgument {
             "derive" => {
                 let content;
                 parenthesized!(content in input);
-                let args: Punctuated<_, Token![,]> = content.parse_terminated(Path::parse)?;
+                let args = content.parse_terminated(Path::parse, Token![,])?;
                 let paths = args.into_iter().collect();
                 Ok(InnerArgument::Derive(paths))
             }
@@ -203,7 +214,6 @@ impl Parse for InnerArgument {
 }
 
 pub struct EnumInfo {
-    pub span: Span,
     pub attributes: Vec<Attribute>,
     /// The parsed `inner` attributes with their index in the attribute collection
     pub inners: Vec<(usize, InnerAttributeInfo)>,
@@ -225,8 +235,6 @@ pub trait EnumInfoAdapter {
 
 impl EnumInfoAdapter for DeriveInput {
     fn extract_info(self) -> Result<EnumInfo, Error> {
-        let span = self.span();
-
         // Extract the enum data
         let data = match self.data {
             Data::Enum(data) => data,
@@ -244,7 +252,7 @@ impl EnumInfoAdapter for DeriveInput {
         let mut type_naming = None;
         for (i, attr) in self.attrs.iter().enumerate() {
             if attr.is_inner_config() {
-                let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
+                let inner: InnerAttributeInfo = attr.parse_args()?;
 
                 if inner.method_name.is_some() {
                     return Err(Error::new(
@@ -274,7 +282,7 @@ impl EnumInfoAdapter for DeriveInput {
         if let TypeNaming::Custom(format, _) = &type_naming {
             if !format.contains("{var}") {
                 return Err(Error::new(
-                    type_naming.span(),
+                    type_naming.custom_span(),
                     "Expected type name to contain at least `{var}` to give each variants \
                     type a different name",
                 ));
@@ -285,7 +293,7 @@ impl EnumInfoAdapter for DeriveInput {
         let mut other_calls_from = None;
         for (i, attr) in self.attrs.iter().enumerate() {
             let last = attr
-                .path
+                .path()
                 .segments
                 .last()
                 .map(|s| s.to_token_stream().to_string());
@@ -296,7 +304,6 @@ impl EnumInfoAdapter for DeriveInput {
         }
 
         Ok(EnumInfo {
-            span,
             attributes: self.attrs,
             generics: self.generics,
             derives,
@@ -383,7 +390,7 @@ impl VariantInfo {
         let mut derives = parent.derives.clone();
         for (i, attr) in attributes.iter().enumerate() {
             if attr.is_inner_config() {
-                let inner: InnerAttributeInfo = syn::parse2(attr.tokens.clone())?;
+                let inner: InnerAttributeInfo = attr.parse_args()?;
 
                 if let Some(new) = &inner.type_name {
                     InnerAttributeInfo::save_into_or_redundant_err(
@@ -456,7 +463,7 @@ impl VariantInfo {
         let ref_lifetime = Lifetime::new(&lifetime_name, Span::call_site());
         ref_generics
             .params
-            .push(GenericParam::Lifetime(LifetimeDef::new(
+            .push(GenericParam::Lifetime(LifetimeParam::new(
                 ref_lifetime.clone(),
             )));
 
@@ -1182,7 +1189,7 @@ pub trait DocExtractor {
 impl DocExtractor for Vec<Attribute> {
     fn extract_docs(self) -> Vec<Attribute> {
         self.into_iter()
-            .filter(|attr| match attr.path.get_ident() {
+            .filter(|attr| match attr.path().get_ident() {
                 Some(ident) => *ident == "doc",
                 None => false,
             })
@@ -1244,12 +1251,12 @@ impl UsageMonitor {
         monitor
     }
 
-    pub fn inspect_lt_def(input: &LifetimeDef) -> Self {
+    pub fn inspect_lt_param(input: &LifetimeParam) -> Self {
         let mut monitor = UsageMonitor {
             lifetimes: HashSet::new(),
             type_paths: HashSet::new(),
         };
-        monitor.visit_lifetime_def(input);
+        monitor.visit_lifetime_param(input);
         monitor
     }
 
@@ -1305,9 +1312,9 @@ impl UsageMonitorAdapter for ItemStruct {
     }
 }
 
-impl UsageMonitorAdapter for LifetimeDef {
+impl UsageMonitorAdapter for LifetimeParam {
     fn inspect(&self) -> UsageMonitor {
-        UsageMonitor::inspect_lt_def(self)
+        UsageMonitor::inspect_lt_param(self)
     }
 }
 
@@ -1368,7 +1375,7 @@ impl GenericsFilter for Generics {
             // Check all lifetime defs
             for ltdef in ltdefs.iter() {
                 if &ltdef.lifetime.to_string() != *lt {
-                    let usage = UsageMonitor::inspect_lt_def(ltdef);
+                    let usage = UsageMonitor::inspect_lt_param(ltdef);
                     if usage.lifetimes.contains(*lt) {
                         used = true;
                         break;
@@ -1413,7 +1420,7 @@ impl GenericsFilter for Generics {
 
             // Check all lifetime defs
             for ltdef in ltdefs.iter() {
-                let usage = UsageMonitor::inspect_lt_def(ltdef);
+                let usage = UsageMonitor::inspect_lt_param(ltdef);
                 if usage.type_paths.contains(*tp) {
                     used = true;
                     break;
@@ -1499,9 +1506,6 @@ impl GenericsFilter for Generics {
                 let index = preds.iter().position(|pred| match pred {
                     WherePredicate::Type(tpred) => {
                         &tpred.bounded_ty.to_token_stream().to_string() == tp
-                    }
-                    WherePredicate::Eq(eqpred) => {
-                        &eqpred.lhs_ty.to_token_stream().to_string() == tp
                     }
                     _ => false,
                 });

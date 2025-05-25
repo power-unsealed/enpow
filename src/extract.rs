@@ -5,7 +5,6 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream},
-    punctuated::Punctuated,
     Data, DeriveInput, Error, Fields, Ident, Token,
 };
 
@@ -106,7 +105,7 @@ pub struct ExtractAttributeInfo {
 
 impl Parse for ExtractAttributeInfo {
     fn parse(input: ParseStream) -> Result<Self, Error> {
-        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
+        let mut items = input.parse_terminated(Ident::parse, Token![,])?;
         let mut types = HashSet::new();
 
         // If there are no arguments, insert a fake "All"

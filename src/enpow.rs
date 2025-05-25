@@ -5,7 +5,6 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
-    punctuated::Punctuated,
     Data, DeriveInput, Error, Ident, Token,
 };
 
@@ -226,7 +225,7 @@ pub struct EnpowAttributeInfo {
 
 impl Parse for EnpowAttributeInfo {
     fn parse(input: ParseStream) -> Result<Self, Error> {
-        let mut items: Punctuated<_, Token![,]> = input.parse_terminated(Ident::parse)?;
+        let mut items = input.parse_terminated(Ident::parse, Token![,])?;
         let mut methods = HashSet::new();
 
         // If there are no arguments, insert a fake "All"
